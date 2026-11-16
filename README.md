@@ -6,6 +6,10 @@ A personal site where I store a collection of my favourite things, built from sc
 
 ![Home page](screenshots/homepage.png)
 
+**Synced lyrics:** each line lights up exactly when it's sung.
+
+https://github.com/user-attachments/assets/71e79cbd-fe34-4e52-b879-2652a0a1137d
+
 ![Emilia's character page](screenshots/charpage.gif)
 
 ## Features
