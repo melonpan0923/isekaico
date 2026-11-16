@@ -11,15 +11,44 @@
     return CHARACTERS.find((c) => c.id === id) || CHARACTERS[0];
   }
 
+  // EN / JP (js/i18n.js): a data field / a fixed string in the current
+  // language, plain English if i18n.js isn't loaded
+  const L = (item, key) => (window.I18N ? I18N.field(item, key) : item[key]);
+  const T = (key, english) => (window.I18N ? I18N.t(key) : english);
+  const isJa = () => !!(window.I18N && I18N.lang === "ja");
+  let currentId = null;
+
   function render(id) {
     const active = getActive(id);
+    currentId = active.id;
+    const name = L(active, "name");
+
+    // Every time a character's panel is (re)drawn — switching to them, or
+    // switching back — their voice cycle starts over at sequence[0], and
+    // whatever was playing for the previous character stops. A full page
+    // reload/leave already resets this for free, since voiceStep and
+    // voiceAudio are recreated from scratch on script load.
+    voiceAudio.pause();
+    voiceStep.delete(active.id);
 
     track.innerHTML = CHARACTERS.map((c) => {
       const activeClass = c.id === active.id ? " active" : "";
       return (
-        '<a class="char-item char-select-item' + activeClass + '" href="character.html?id=' + c.id + '" data-id="' + c.id + '">' +
-        '<div class="char-frame"><div class="char-placeholder"><img src="' + c.icon + '" alt="' + c.name + '"></div></div>' +
-        '<p class="char-name">' + c.name + "</p>" +
+        '<a class="char-item char-select-item' +
+        activeClass +
+        '" href="character.html?id=' +
+        c.id +
+        '" data-id="' +
+        c.id +
+        '">' +
+        '<div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" src="' +
+        c.icon +
+        '" alt="' +
+        L(c, "name") +
+        '"></div></div>' +
+        '<p class="char-name">' +
+        L(c, "name") +
+        "</p>" +
         "</a>"
       );
     }).join("");
@@ -30,35 +59,74 @@
       const effects = (active.effects || [])
         .map(
           (fx) =>
-            '<img class="character-effect-img" src="' + fx.src + '" alt="" ' +
-            'style="left:' + fx.left + ';top:' + fx.top + ';width:' + fx.width + '">'
+            '<img class="character-effect-img" src="' +
+            fx.src +
+            '" alt="" ' +
+            'style="left:' +
+            fx.left +
+            ";top:" +
+            fx.top +
+            ";width:" +
+            fx.width +
+            '">',
         )
         .join("");
       const floatClass = active.float ? " floating" : "";
       let cutoutStyle = "";
       if (active.float) {
         if (active.floatDuration) cutoutStyle += "animation-duration:" + active.floatDuration + ";";
-        if (active.floatAmplitude) cutoutStyle += "--cutout-float-amplitude:" + active.floatAmplitude + ";";
+        if (active.floatAmplitude)
+          cutoutStyle += "--cutout-float-amplitude:" + active.floatAmplitude + ";";
       }
       const cutoutStyleAttr = cutoutStyle ? ' style="' + cutoutStyle + '"' : "";
       const translateParts = [];
       if (active.offsetX) translateParts.push("translateX(" + active.offsetX + ")");
       if (active.offsetY) translateParts.push("translateY(" + active.offsetY + ")");
       if (active.scale) translateParts.push("scale(" + active.scale + ")");
-      const mediaBoxStyle = "aspect-ratio:" + (active.imageAspect || "3 / 4") + (translateParts.length ? ";transform:" + translateParts.join(" ") : "");
+      // --ar: the same ratio as a number for style.css, which works the box's
+      // width out from its height itself (see .character-detail-media.cutout)
+      const aspect = active.imageAspect || "3 / 4";
+      const mediaBoxStyle =
+        "aspect-ratio:" +
+        aspect +
+        ";--ar:" +
+        aspect +
+        (active.headX ? ";--head-x:" + active.headX : "") +
+        (translateParts.length ? ";transform:" + translateParts.join(" ") : "");
       mediaHTML =
-        '<div class="character-detail-media cutout' + floatClass + '" style="' + mediaBoxStyle + '">' +
-        '<img class="character-cutout-img" src="' + mediaImage + '" alt="' + active.name + '"' + cutoutStyleAttr + ">" +
+        '<div class="character-detail-media cutout' +
+        floatClass +
+        '" data-id="' +
+        active.id +
+        '" style="' +
+        mediaBoxStyle +
+        '">' +
+        '<img class="character-cutout-img" src="' +
+        mediaImage +
+        '" alt="' +
+        name +
+        '"' +
+        cutoutStyleAttr +
+        ">" +
         effects +
         "</div>";
     } else {
-      mediaHTML = '<div class="character-detail-media"><img src="' + mediaImage + '" alt="' + active.name + '"></div>';
+      mediaHTML =
+        '<div class="character-detail-media"><img src="' +
+        mediaImage +
+        '" alt="' +
+        name +
+        '"></div>';
     }
 
     function stat(label, value) {
       return (
-        '<div class="character-stat"><span class="character-stat-label">' + label + ":</span> " +
-        '<span class="character-stat-value">' + (value || "—") + "</span></div>"
+        '<div class="character-stat"><span class="character-stat-label">' +
+        label +
+        (isJa() ? "：</span>" : ":</span> ") +
+        '<span class="character-stat-value">' +
+        (value || "—") +
+        "</span></div>"
       );
     }
 
@@ -67,18 +135,77 @@
       mediaHTML +
       '<div class="character-detail-info">' +
       '<div class="character-stat-grid">' +
-      stat("Name", active.name) +
-      stat("CV", active.cv) +
-      stat("Age", active.age) +
-      stat("Height", active.height) +
-      stat("Birthday", active.birthday) +
-      stat("Weight", active.weight) +
+      stat(T("char.name", "Name"), name) +
+      stat(T("char.cv", "CV"), L(active, "cv")) +
+      stat(T("char.age", "Age"), L(active, "age")) +
+      stat(T("char.height", "Height"), L(active, "height")) +
+      stat(T("char.birthday", "Birthday"), L(active, "birthday")) +
+      '<div class="character-stat"><span class="character-stat-label">' +
+      T("char.voice", "Voice") +
+      (isJa() ? "：</span>" : ":</span> ") +
+      '<button class="voice-play-btn" type="button" data-char="' +
+      active.id +
+      '" aria-label="' +
+      (isJa() ? name + T("char.playVoice", "") : "Play " + name + " voice line") +
+      '">' +
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>' +
+      "</svg></button></div>" +
       "</div>" +
-      '<p class="character-detail-bio">' + active.bio + "</p>" +
+      '<p class="character-detail-bio">' +
+      L(active, "bio") +
+      "</p>" +
       "</div>";
 
-    document.title = active.name + " | 異世界コレクション";
+    document.title = name + " | 異世界コレクション";
   }
+
+  // JP / EN switched: redraw the same character in the new language
+  document.addEventListener("langchange", () => render(currentId));
+
+  // ===== Voice line playback =====
+  // Each click on a character's Voice icon advances one step through that
+  // character's CHARACTERS[].voice.sequence, then (once exhausted) into its
+  // randomAfter pool or chance-based secret line if it has one, before
+  // looping back to sequence[0]. Progress is tracked per character id, but
+  // render() resets it back to 0 on every (re)draw, so switching away from
+  // a character and back always starts that character's cycle over at
+  // sequence[0] rather than resuming mid-cycle.
+  const voiceAudio = new Audio();
+  const voiceStep = new Map();
+
+  function playVoiceLine(id) {
+    const voice = getActive(id).voice;
+    if (!voice) return;
+
+    const step = voiceStep.get(id) || 0;
+    let file, nextStep;
+
+    if (step < voice.sequence.length) {
+      file = voice.sequence[step];
+      nextStep = step + 1;
+    } else if (voice.randomAfter) {
+      file = voice.randomAfter[Math.floor(Math.random() * voice.randomAfter.length)];
+      nextStep = 0;
+    } else if (voice.secret && Math.random() < voice.secret.chance) {
+      file = voice.secret.file;
+      nextStep = 0;
+    } else {
+      file = voice.sequence[0];
+      nextStep = 1;
+    }
+
+    voiceStep.set(id, nextStep);
+    voiceAudio.pause();
+    voiceAudio.src = voice.folder + "/" + encodeURIComponent(file);
+    voiceAudio.currentTime = 0;
+    voiceAudio.play();
+  }
+
+  detail.addEventListener("click", (e) => {
+    const voiceBtn = e.target.closest(".voice-play-btn");
+    if (voiceBtn) playVoiceLine(voiceBtn.dataset.char);
+  });
 
   // Event delegation on the (stable) track element, so this still works
   // after render() replaces the <a> icons inside it.
@@ -98,54 +225,14 @@
   });
 
   render(new URLSearchParams(location.search).get("id"));
-})();
 
-// ===== "Character" title entrance animation =====
-// Runs once when the page loads/navigates in (not on character switches,
-// since this title isn't part of what render() above touches). Change
-// timing by editing these three numbers — no percentage math needed.
-(function () {
-  const content = document.querySelector(".title-content");
-  const cover = document.querySelector(".title-cover");
-  if (!content || !cover) return;
-
-  const BUILD_SECONDS = 0.5; // block growing in, left to right
-  const HOLD_SECONDS = 0; // fully-formed pause before it recedes
-  const WIPE_SECONDS = 0.5; // block emptying out, revealing the text
-
-  const buildMs = BUILD_SECONDS * 1000;
-  const holdMs = HOLD_SECONDS * 1000;
-  const wipeMs = WIPE_SECONDS * 1000;
-  const totalMs = buildMs + holdMs + wipeMs;
-  const revealOffset = (buildMs + holdMs) / totalMs;
-  const easing = "cubic-bezier(0.65, 0, 0.35, 1)";
-
-  // easing is set per-keyframe (applies to the segment from that keyframe
-  // to the next) rather than once in the options — a single top-level
-  // easing would warp the *overall* 0-1 timeline before mapping it to
-  // these offsets, which stretches the build/wipe phases unevenly instead
-  // of giving each its own independent slow-fast-slow shape.
-  cover.animate(
-    [
-      { left: "0%", width: "0%", offset: 0, easing },
-      { left: "0%", width: "100%", offset: buildMs / totalMs, easing },
-      { left: "0%", width: "100%", offset: revealOffset, easing },
-      { left: "100%", width: "0%", offset: 1 },
-    ],
-    { duration: totalMs, fill: "forwards" },
-  );
-
-  // Content flips from invisible to fully opaque in the same instant the
-  // cover starts receding — since the cover is still at full width right
-  // up to that point, the flip itself is never visible, only the reveal
-  // that follows as the cover empties out.
-  content.animate(
-    [
-      { opacity: 0, offset: 0 },
-      { opacity: 0, offset: Math.max(0, revealOffset - 0.001) },
-      { opacity: 1, offset: revealOffset },
-      { opacity: 1, offset: 1 },
-    ],
-    { duration: totalMs, fill: "forwards" },
-  );
+  // Drawn once more as soon as the page (every picture included) has
+  // finished loading. iPhone Safari left Emilia's crystal and axe off their
+  // spots after a fresh page load — the first draw happens while those
+  // pictures are still downloading — until something drew the panel again
+  // (switching character or language put them right). This is that redraw,
+  // done while the loading screen still covers the page.
+  if (document.readyState !== "complete") {
+    window.addEventListener("load", () => render(currentId), { once: true });
+  }
 })();

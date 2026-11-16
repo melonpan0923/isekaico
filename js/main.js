@@ -30,19 +30,19 @@
       title: "Constant Moderato",
       artist: "ブルアカ",
       src: "assets/audio/home/Constant%20Moderato.mp3",
-      art: "assets/audio/home/babg2.png",
+      art: "assets/audio/home/babg2.webp",
     },
     {
       title: "Connected Sky",
       artist: "ブルアカ",
       src: "assets/audio/home/Connected%20Sky.mp3",
-      art: "assets/audio/home/babg1.png",
+      art: "assets/audio/home/babg1.webp",
     },
     {
       title: "Clear Morning",
       artist: "小倉 唯",
       src: "assets/audio/home/Clear%20Morning.mp3",
-      art: "assets/audio/home/babg3.jpg",
+      art: "assets/audio/home/babg3.webp",
     },
   ];
 
@@ -328,15 +328,17 @@
       // size, and stays correct if that row's width ever changes.
       const controlsRect = document.querySelector(".player-controls").getBoundingClientRect();
       const margin = 16;
+
       const gapLeft = Math.max(0, controlsRect.left - margin);
       const gapRight = Math.min(w, controlsRect.right + margin);
       const leftWidth = gapLeft;
       const rightWidth = w - gapRight;
       const totalWidth = leftWidth + rightWidth;
-      if (totalWidth <= 0) return;
+      const phoneBars = controlsRect.width > w * 0.6;
+      if (totalWidth <= 0 && !phoneBars) return;
 
       const gap = 2.5;
-      const totalBars = 24;
+      const totalBars = 16;
       const leftBars = Math.max(1, Math.round(totalBars * (leftWidth / totalWidth)));
       const rightBars = Math.max(1, totalBars - leftBars);
 
@@ -348,7 +350,10 @@
       // falling together.
       const spreadBins = Math.floor(dataArray.length * 0.65);
       function binForBar(barGlobalIndex) {
-        return Math.min(dataArray.length - 1, Math.floor((barGlobalIndex / (totalBars - 1)) * spreadBins));
+        return Math.min(
+          dataArray.length - 1,
+          Math.floor((barGlobalIndex / (totalBars - 1)) * spreadBins),
+        );
       }
 
       // Bars are rooted to the bottom edge (0 there) and grow upward, each
@@ -361,12 +366,20 @@
       // left/right zones pass 0.92 (effectively uncapped), the middle zone
       // passes 0.1 so it's reactive to the same music but can never grow
       // past 10% height.
-      function drawZone(xStart, zoneWidth, barCount, binStart, maxRatio) {
+      // mirror: bass at both ends and the highs meeting in the middle (each
+      // half runs the whole spread), so the shape is even, tall at the
+      // sides and lower in the middle, instead of tall left / short right.
+      function drawZone(xStart, zoneWidth, barCount, binStart, maxRatio, mirror) {
         const bw = (zoneWidth - gap * (barCount - 1)) / barCount;
         if (bw <= 0) return;
         const maxH = h * maxRatio;
         for (let i = 0; i < barCount; i++) {
-          const value = dataArray[binForBar(binStart + i)] || 0;
+          const bar = mirror
+            ? Math.round(
+                (Math.min(i, barCount - 1 - i) / Math.max(1, (barCount - 1) / 2)) * (totalBars - 1),
+              )
+            : binStart + i;
+          const value = dataArray[binForBar(bar)] || 0;
           const barH = Math.min(maxH, Math.max(2, (value / 255) * h * 0.92));
           const x = xStart + i * (bw + gap);
           const grad = ctx.createLinearGradient(0, h, 0, h - barH);
@@ -376,6 +389,16 @@
           ctx.fillStyle = grad;
           ctx.fillRect(x, h - barH, bw, barH);
         }
+      }
+
+      // Phones: the controls fill nearly the whole width, leaving no room
+      // either side of them, so the bars run the full width along the
+      // bottom of the screen instead, only as tall as the space below the
+      // controls (so they never grow up behind the buttons).
+      if (phoneBars) {
+        const room = h - Math.max(0, controlsRect.bottom + margin - rect.top);
+        drawZone(0, w, totalBars, 0, Math.max(0.1, room / h), true);
+        return;
       }
 
       drawZone(0, leftWidth, leftBars, 0, 0.92);
@@ -405,6 +428,21 @@
 
   const dots = Array.from(document.querySelectorAll("#favDots .dot"));
   const titleEl = document.getElementById("favTitle");
+
+  // The caption under the carousel is the slide's data-category, in
+  // Japanese when JP is selected (js/i18n.js)
+  const CATEGORY_JA = { Anime: "アニメ", Character: "キャラクター", Music: "楽曲", Game: "ゲーム" };
+  function categoryLabel(category) {
+    return window.I18N && I18N.lang === "ja" ? CATEGORY_JA[category] || category : category;
+  }
+  document.addEventListener("langchange", () => {
+    const i = Math.max(
+      0,
+      dots.findIndex((d) => d.classList.contains("active")),
+    );
+    if (titleEl && realSlides[i])
+      titleEl.textContent = categoryLabel(realSlides[i].dataset.category);
+  });
   const prevBtn = document.getElementById("favPrev");
   const nextBtn = document.getElementById("favNext");
 
@@ -458,25 +496,28 @@
     const maxPos = slides.length - 1;
     const clampedPos = Math.min(Math.max(pos, 0), maxPos);
 
-    // offsetWidth reflects true layout size, unaffected by any CSS transform
-    // (getBoundingClientRect would return a shrunk box for a scaled/faded slide).
-    const frameWidth = frame.offsetWidth;
-    const slideWidth = slides[0].offsetWidth;
+    // Exact (fractional) widths: offsetWidth rounds to whole pixels, and that
+    // error gets multiplied by "pos" (dozens of slides in), which left the
+    // slide sitting ~20px off the left edge on phones. The slides are never
+    // scaled, and the track's translate doesn't change widths.
+    const frameWidth = frame.getBoundingClientRect().width;
+    const slideWidth = slides[0].getBoundingClientRect().width;
     const gap = parseFloat(getComputedStyle(track).gap) || 0;
     const offset = clampedPos * (slideWidth + gap) - (frameWidth - slideWidth) / 2;
     track.style.transform = `translateX(-${offset}px)`;
 
     // realIndex is always derived via modulo, so it - and the slide it reads -
     // stay valid no matter how far "pos" itself has drifted.
-    const realIndex = ((pos - realStart) % realCount + realCount) % realCount;
+    const realIndex = (((pos - realStart) % realCount) + realCount) % realCount;
     dots.forEach((d, i) => d.classList.toggle("active", i === realIndex));
-    if (titleEl) titleEl.textContent = slides[realStart + realIndex].dataset.category;
+    if (titleEl)
+      titleEl.textContent = categoryLabel(slides[realStart + realIndex].dataset.category);
   }
 
   function scheduleSnap() {
     if (snapTimer) clearTimeout(snapTimer);
     snapTimer = setTimeout(() => {
-      const realIndex = ((pos - realStart) % realCount + realCount) % realCount;
+      const realIndex = (((pos - realStart) % realCount) + realCount) % realCount;
       const target = realStart + realIndex;
       if (pos !== target) {
         pos = target;
@@ -525,6 +566,20 @@
     });
   });
 
+  // Each slide links to its page, but the side slides peeking in on either
+  // side are visible too: clicking one of those brings it to the center
+  // first (like the arrows) instead of opening its page. Only the centered
+  // slide's click follows its link.
+  track.addEventListener("click", (e) => {
+    const slide = e.target.closest(".carousel-slide");
+    if (!slide) return;
+    const index = slides.indexOf(slide);
+    if (index === -1 || index === pos) return;
+    e.preventDefault();
+    goTo(index);
+    resetTimer();
+  });
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") {
       prev();
@@ -545,7 +600,10 @@
 function initScrubber({ barEl, thumbEl, trackEl, visible }) {
   if (!barEl || !thumbEl || !trackEl) return;
 
-  const total = trackEl.children.length;
+  // the real cards — the looping copies added for phones (below) aren't
+  // part of the desktop slider
+  const realItems = Array.from(trackEl.children);
+  const total = realItems.length;
   const maxIndex = Math.max(total - visible, 0);
   const TRANSITION_MS = 400; // keep in sync with .preview-track's transition duration
   // -1 (not a valid index) so the initial setIndex(0) call below always
@@ -553,6 +611,10 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
   let current = -1;
   let dragging = false;
   let hideTimer = null;
+  // Phones: the window is a native sideways scroller with snap points
+  // (style.css), so the transform sliding, hiding and card drag below are
+  // desktop-only — same split as js/browse-drawer.js.
+  const phoneLayout = window.matchMedia("(max-width: 700px)");
 
   function layoutThumb() {
     const thumbPercent = Math.min(visible / total, 1) * 100;
@@ -563,7 +625,11 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
   }
 
   function moveTrack() {
-    const firstCard = trackEl.children[0];
+    if (phoneLayout.matches) {
+      trackEl.style.transform = "";
+      return;
+    }
+    const firstCard = realItems[0];
     const gap = parseFloat(getComputedStyle(trackEl).gap) || 0;
     // offsetWidth avoids picking up a hover scale transform on the card.
     const cardWidth = firstCard.offsetWidth;
@@ -579,11 +645,17 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
   // they slide out of view instead of snapping invisible mid-slide.
   function updateVisibility() {
     if (hideTimer) clearTimeout(hideTimer);
-    Array.from(trackEl.children).forEach((child, i) => {
+    if (phoneLayout.matches) {
+      realItems.forEach((child) => {
+        child.style.visibility = "";
+      });
+      return;
+    }
+    realItems.forEach((child, i) => {
       if (i >= current && i < current + visible) child.style.visibility = "";
     });
     hideTimer = setTimeout(() => {
-      Array.from(trackEl.children).forEach((child, i) => {
+      realItems.forEach((child, i) => {
         if (i < current || i >= current + visible) child.style.visibility = "hidden";
       });
     }, TRANSITION_MS);
@@ -631,13 +703,74 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
     moveTrack();
   });
 
+  phoneLayout.addEventListener("change", () => {
+    moveTrack();
+    updateVisibility();
+    if (phoneLayout.matches) placePhone();
+  });
+
+  // ----- Phones: swiping loops (Frieren → Re:ZERO and back) -----
+  // A copy of every card on each side (hidden on desktop, style.css). When
+  // a swipe settles on a copy, the scroller jumps — instantly, to the same
+  // picture — onto the matching real card, so there's always another card
+  // either way.
+  const viewport = trackEl.parentElement;
+  function copies() {
+    const fragment = document.createDocumentFragment();
+    realItems.forEach((item) => {
+      const clone = item.cloneNode(true);
+      clone.classList.add("loop-clone");
+      clone.setAttribute("aria-hidden", "true");
+      clone.setAttribute("tabindex", "-1");
+      fragment.appendChild(clone);
+    });
+    return fragment;
+  }
+  trackEl.insertBefore(copies(), trackEl.firstChild);
+  trackEl.appendChild(copies());
+
+  let phoneIndex = 0; // which real card is showing
+  let settleTimer = null;
+
+  function slideW() {
+    return realItems[0].getBoundingClientRect().width;
+  }
+
+  function placePhone() {
+    const w = slideW();
+    if (w) viewport.scrollLeft = (total + phoneIndex) * w;
+  }
+
+  viewport.addEventListener(
+    "scroll",
+    () => {
+      if (!phoneLayout.matches) return;
+      const w = slideW();
+      if (!w) return;
+      const i = Math.round(viewport.scrollLeft / w);
+      phoneIndex = (((i - total) % total) + total) % total;
+      // wait for the swipe (and its snap) to finish before jumping
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        const at = Math.round(viewport.scrollLeft / w);
+        if (at < total || at >= 2 * total) placePhone();
+      }, 150);
+    },
+    { passive: true },
+  );
+
+  window.addEventListener("resize", () => {
+    if (phoneLayout.matches) placePhone();
+  });
+  if (phoneLayout.matches) placePhone();
+
   // ----- Drag the cards themselves (not just the scrub bar) -----
   // Follows the pointer 1:1 while dragging (transition off), then hands
   // off to setIndex on release, which snaps to the nearest card and
   // re-enables the transition for that final settle.
   function stepPx() {
     const gap = parseFloat(getComputedStyle(trackEl).gap) || 0;
-    return trackEl.children[0].offsetWidth + gap;
+    return realItems[0].offsetWidth + gap;
   }
 
   let pointerActive = false;
@@ -684,12 +817,14 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
     // neighbor you're dragging toward is actually visible sliding in,
     // instead of popping in only once the index officially changes.
     if (hideTimer) clearTimeout(hideTimer);
-    Array.from(trackEl.children).forEach((child) => {
+    realItems.forEach((child) => {
       child.style.visibility = "";
     });
   }
 
   trackEl.addEventListener("pointerdown", (e) => {
+    // Primary button only — see the identical guard in js/browse-drawer.js.
+    if (e.button !== 0 || phoneLayout.matches) return;
     pointerActive = true;
     dragStarted = false;
     activePointerId = e.pointerId;
@@ -699,6 +834,11 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
 
   trackEl.addEventListener("pointermove", (e) => {
     if (!pointerActive) return;
+    // Missed release (see js/browse-drawer.js): end instead of hover-dragging.
+    if (e.buttons === 0) {
+      endCardDrag(e);
+      return;
+    }
     latestDelta = e.clientX - dragStartX;
     if (!dragStarted) {
       if (Math.abs(latestDelta) < DRAG_THRESHOLD_PX) return;
@@ -759,7 +899,7 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
     // Also allow arrow keys mid-drag even if the pointer (under capture)
     // has moved outside the bar/thumb bounds, so a drag started on the
     // slider doesn't get silently cut off by a stray mouseleave.
-    if (!hovering && !barHovering && !dragging && !cardDragging) return;
+    if (!hovering && !barHovering && !dragging && !dragStarted) return;
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       setIndex(current - 1);
@@ -794,6 +934,12 @@ initScrubber({
 (function () {
   const items = document.querySelectorAll("#musicTrack .music-item");
   if (!items.length) return;
+
+  // Mouse only: on phones a tap counts as a hover, so tapping an artist
+  // started their clip (and the bars) instead of just opening their page.
+  // Touch screens skip the whole effect, clip downloads included.
+  const mouse = window.matchMedia("(hover: hover) and (pointer: fine)");
+  if (!mouse.matches) return;
 
   const BAR_COUNT = 44;
   const BAR_WIDTH = 4;
@@ -948,14 +1094,18 @@ initScrubber({
       state.analyser.getByteFrequencyData(state.dataArray);
       const spreadBins = Math.floor(state.dataArray.length * 0.65);
       for (let i = 0; i < BAR_COUNT; i++) {
-        const bin = Math.min(state.dataArray.length - 1, Math.floor((i / (BAR_COUNT - 1)) * spreadBins));
+        const bin = Math.min(
+          state.dataArray.length - 1,
+          Math.floor((i / (BAR_COUNT - 1)) * spreadBins),
+        );
         const base = 6 + (state.dataArray[bin] / 255) * 26;
         target[i] = Math.max(4, base + jitterOffsets[i]);
       }
     }
 
     function tick(ts) {
-      const usingRealAudio = audioState && audioState.analyser && audioState.ctx.state === "running";
+      const usingRealAudio =
+        audioState && audioState.analyser && audioState.ctx.state === "running";
       if (ts - lastTargetTime > 90) {
         lastTargetTime = ts;
         refreshJitter();
@@ -1157,4 +1307,245 @@ initScrubber({
   backToTop.addEventListener("click", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+})();
+
+// ===== Fullscreen video: turn sideways on phones =====
+// Any video going fullscreen (the music player's expand button, the anime
+// preview's own fullscreen button, …) flips a phone to landscape, the way
+// the YouTube app does — then follows the sensor between the two landscape
+// sides, and goes back to normal on exit. Only for wide videos (a portrait
+// video stays upright) and only on touch screens.
+//
+// iPhones can't be rotated by a web page: they use Apple's own fullscreen
+// video player instead, which fills the screen and turns sideways when you
+// turn the phone (if Portrait Orientation Lock is off).
+(function () {
+  const orientation = screen.orientation;
+  if (!orientation || typeof orientation.lock !== "function") return;
+  const touch = window.matchMedia("(pointer: coarse)");
+  let locked = false;
+
+  function fullscreenVideo() {
+    const el = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!el) return null;
+    return el.tagName === "VIDEO" ? el : el.querySelector("video");
+  }
+
+  function isWide(video) {
+    // size not known yet (still loading): assume a normal widescreen video
+    return !video.videoWidth || video.videoWidth >= video.videoHeight;
+  }
+
+  function onChange() {
+    const video = fullscreenVideo();
+    if (video && touch.matches && isWide(video)) {
+      orientation.lock("landscape").then(
+        () => (locked = true),
+        () => {},
+      );
+    } else if (locked && !video) {
+      locked = false;
+      if (typeof orientation.unlock === "function") orientation.unlock();
+    }
+  }
+
+  document.addEventListener("fullscreenchange", onChange);
+  document.addEventListener("webkitfullscreenchange", onChange);
+})();
+
+// ===== Home: keep the sparkle dots off the panels' edges =====
+// The dots behind Anime/Character/Music/Game (style.css, --sparkle-dots,
+// one 900px tile repeated down .preview-sections-wrap) land wherever the
+// tile puts them, and one sitting on a white panel's edge shows as half a
+// dot. This slides the whole pattern up/down to the offset that leaves the
+// fewest dots cut by a panel edge, redone whenever the layout changes size.
+(function () {
+  const wrap = document.querySelector(".preview-sections-wrap");
+  if (!wrap) return;
+  const TILE = 900;
+
+  // [x%, y%, size%] of each dot, read from the CSS so it stays in sync
+  const dots = [];
+  const re = /circle at ([\d.]+)% ([\d.]+)%.*?([\d.]+)%\)/g;
+  let m;
+  const bg = getComputedStyle(wrap).backgroundImage;
+  while ((m = re.exec(bg))) dots.push([+m[1] / 100, +m[2] / 100, +m[3] / 100]);
+  if (!dots.length) return;
+
+  // how many dots a panel edge slices, and how many show whole
+  function score(offset, panels, w, h) {
+    let cut = 0;
+    let whole = 0;
+    dots.forEach(([dx, dy, ds]) => {
+      const cx = dx * w;
+      // the circle's size is a share of the distance to the tile's farthest
+      // corner; it fades out towards that edge, so ~3/4 of it actually shows
+      const r = 0.75 * ds * Math.hypot(Math.max(cx, w - cx), Math.max(dy * TILE, TILE - dy * TILE));
+      for (let cy = dy * TILE + offset - TILE; cy - r < h; cy += TILE) {
+        if (cy + r < 0) continue;
+        // sliced by the top/bottom of the area itself
+        if (cy - r < 0 || cy + r > h) {
+          cut++;
+          continue;
+        }
+        let state = "whole";
+        for (const p of panels) {
+          const nx = Math.max(p.left, Math.min(cx, p.right));
+          const ny = Math.max(p.top, Math.min(cy, p.bottom));
+          if (cx - r >= p.left && cx + r <= p.right && cy - r >= p.top && cy + r <= p.bottom) {
+            state = "hidden";
+            break;
+          }
+          if (Math.hypot(cx - nx, cy - ny) < r) state = "cut";
+        }
+        if (state === "cut") cut++;
+        else if (state === "whole") whole++;
+      }
+    });
+    return [cut, whole];
+  }
+
+  function place() {
+    const box = wrap.getBoundingClientRect();
+    const panels = Array.from(wrap.querySelectorAll(".section-panel")).map((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        left: r.left - box.left,
+        right: r.right - box.left,
+        top: r.top - box.top,
+        bottom: r.bottom - box.top,
+      };
+    });
+    let best = 0;
+    let bestCut = Infinity;
+    let bestWhole = -1;
+    for (let offset = 0; offset < TILE; offset += 2) {
+      const [cut, whole] = score(offset, panels, box.width, box.height);
+      if (cut < bestCut || (cut === bestCut && whole > bestWhole)) {
+        bestCut = cut;
+        bestWhole = whole;
+        best = offset;
+      }
+    }
+    wrap.style.backgroundPosition = "0 " + best + "px";
+  }
+
+  let timer = null;
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(place, 150);
+  }
+  if (window.ResizeObserver) new ResizeObserver(schedule).observe(wrap);
+  window.addEventListener("load", schedule);
+  schedule();
+})();
+
+// ===== Top bar height, for style.css (--topbar-h) =====
+// Phones size the Favourite section to fill the rest of the first screen
+// below the top bar, and the top bar's height changes with the screen
+// width and the language.
+(function () {
+  const bar = document.querySelector(".topbar");
+  if (!bar) return;
+  const set = () =>
+    document.documentElement.style.setProperty("--topbar-h", bar.offsetHeight + "px");
+  set();
+  if (window.ResizeObserver) new ResizeObserver(set).observe(bar);
+})();
+
+// ===== Home video banner: only play while on screen =====
+// A looping 1080p video keeps the graphics chip decoding frames even when
+// it's scrolled out of view; pausing it there frees that work for smooth
+// scrolling (and saves battery on phones/laptops). It resumes from where it
+// was the moment any part of it comes back into view.
+(function () {
+  const video = document.querySelector(".video-banner__media");
+  if (!video || !("IntersectionObserver" in window)) return;
+  new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) video.play().catch(() => {});
+      else video.pause();
+    });
+  }).observe(video);
+})();
+
+// ===== Finish loading the rest of the images in the background =====
+// Images further down the page are lazy (they don't hold up the first
+// screen or the loading card). But on the live site each one takes a
+// moment to arrive, so waiting until you scroll to them showed empty
+// spots that filled in late. Once the page has finished loading, start
+// all of them, so they're ready before you get there.
+window.addEventListener("load", () => {
+  document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+    img.loading = "eager";
+  });
+});
+
+// ===== Make room for the "Powered by Netlify" badge =====
+// On the live site Netlify adds a small badge (an <iframe>) to the
+// bottom-right corner after the page loads. This measures how far its
+// visible part reaches up from the bottom and stores that (+ a 4px gap,
+// about 0.1cm) in --badge-space; style.css uses it as the bottom offset of
+// the crystal and the mini player, so they sit just on top of the badge.
+// Running locally there's no badge, so nothing moves.
+(function () {
+  const root = document.documentElement;
+  const GAP = 4;
+  let badge = null;
+
+  // The iframe is a little taller than the badge you see: its clip-path
+  // ("M 3 3 H …") trims a few transparent pixels off the top.
+  function clipTop(el) {
+    const m = /M\s*[\d.]+[\s,]+([\d.]+)/.exec(el.style.clipPath || "");
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  function measure() {
+    let space = 0;
+    if (badge && badge.isConnected) {
+      const top = badge.getBoundingClientRect().top + clipTop(badge);
+      space = Math.max(0, Math.round(innerHeight - top));
+    }
+    root.style.setProperty("--badge-space", space ? space + GAP + "px" : "0px");
+  }
+
+  function findBadge() {
+    const found = document.getElementById("nl-badge-frame");
+    if (found === badge) return;
+    badge = found;
+    if (badge) {
+      if (window.ResizeObserver) new ResizeObserver(measure).observe(badge);
+      // the clip-path changes if the badge expands/collapses
+      new MutationObserver(measure).observe(badge, { attributes: true, attributeFilter: ["style"] });
+    }
+    measure();
+  }
+
+  new MutationObserver(findBadge).observe(document.body, { childList: true });
+  window.addEventListener("resize", measure);
+  findBadge();
+})();
+
+/* ===== Top bar: centre the title on ホーム, not on the menu's box =====
+   The menu's two side groups are made equal width so キャラクター sits in the
+   exact middle; when the right group is longer (JP: ミュージック), there's empty
+   space before ホーム. Hand that width to the CSS as --nav-lead so the title
+   can centre between the screen edge and ホーム itself. */
+(function () {
+  const bar = document.querySelector(".topbar");
+  const nav = bar && bar.querySelector(".main-nav");
+  const start = nav && nav.querySelector(".nav-group-start .nav-link");
+  if (!start) return;
+
+  function measure() {
+    const lead = start.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+    bar.style.setProperty("--nav-lead", Math.max(0, Math.round(lead)) + "px");
+  }
+
+  if (window.ResizeObserver) new ResizeObserver(measure).observe(nav);
+  // EN/JP swaps the link text, which can change the groups' widths
+  new MutationObserver(measure).observe(nav, { subtree: true, characterData: true, childList: true });
+  window.addEventListener("resize", measure);
+  if (document.fonts) document.fonts.ready.then(measure);
+  measure();
 })();

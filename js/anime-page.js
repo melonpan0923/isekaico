@@ -10,6 +10,12 @@
     return ANIMES.find((a) => a.id === id) || ANIMES[0];
   }
 
+  // EN / JP (js/i18n.js): a data field / a fixed string in the current
+  // language, plain English if i18n.js isn't loaded
+  const L = (item, key) => (window.I18N ? I18N.field(item, key) : item[key]);
+  const T = (key, english) => (window.I18N ? I18N.t(key) : english);
+  let currentId = null;
+
   // Reveals .anime-summary-heading (bottom-to-top, see that class and
   // .revealed in style.css) the first time it actually scrolls into view
   // — not on page load, which fired the animation while the heading was
@@ -34,45 +40,83 @@
   const PLACEHOLDER_HTML =
     '<div class="anime-video-placeholder">' +
     '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>' +
-    "<span>Preview video coming soon</span>" +
+    '<span data-i18n="anime.comingSoon">' +
+    T("anime.comingSoon", "Preview video coming soon") +
+    "</span>" +
     "</div>";
 
+  // No "controls" here on purpose — the native scrubber/volume bar would
+  // sit on top of the poster before anyone's even pressed play, clashing
+  // with .anime-video-play below. render() below flips video.controls on
+  // once playback actually starts, and back off if it ends (see the
+  // wiring after detail.innerHTML further down).
   function videoSlotHTML(active) {
     if (!active.video) {
       return '<div class="anime-video-slot">' + PLACEHOLDER_HTML + "</div>";
     }
     return (
       '<div class="anime-video-slot">' +
-      '<video class="anime-preview-video" controls preload="none"' +
+      '<video class="anime-preview-video" preload="metadata" playsinline disablePictureInPicture' +
       (active.videoPoster ? ' poster="' + active.videoPoster + '"' : "") +
       ">" +
-      '<source src="' + active.video + '" type="video/mp4">' +
+      '<source src="' +
+      active.video +
+      '" type="video/mp4">' +
       "</video>" +
+      // shown over the slot while the video is off in its picture-in-picture
+      // window, so the slot isn't left empty — the anime's landscape
+      // carousel picture (see the "Picture in picture" wiring below)
+      '<img class="anime-video-pip" src="' +
+      active.thumb +
+      '" alt="" draggable="false" hidden>' +
+      // tap/click layer over the picture (not the control bar) — see below
+      '<div class="anime-video-tap" hidden></div>' +
+      '<button type="button" class="anime-video-play" aria-label="' +
+      T("anime.playPreview", "Play preview") +
+      '" data-i18n-aria="anime.playPreview">' +
+      '<span class="anime-video-play-icon">' +
+      '<svg width="50" height="50" viewBox="0 0 24 24" fill="currentColor"><path d="M8,6.5 L8,17.5 Q8,19 9.27,18.19 L17.74,12.81 Q19,12 17.74,11.19 L9.27,5.81 Q8,5 8,6.5 Z"/></svg>' +
+      "</span>" +
+      "</button>" +
       "</div>"
     );
   }
 
   function render(id) {
     const active = getActive(id);
+    currentId = active.id;
 
     detail.innerHTML =
       '<div class="anime-hero-panel">' +
       '<div class="anime-hero-inner">' +
-      '<div class="anime-cover"' + (active.posterAspect ? ' style="aspect-ratio:' + active.posterAspect + '"' : "") + '><img src="' + active.poster + '" alt="' + active.title + '"></div>' +
+      '<div class="anime-cover"' +
+      (active.posterAspect ? ' style="aspect-ratio:' + active.posterAspect + '"' : "") +
+      '><img src="' +
+      active.poster +
+      '" alt="' +
+      L(active, "title") +
+      '"></div>' +
       '<div class="anime-hero-body">' +
-      '<h2 class="anime-title">' + active.title + "</h2>" +
+      '<h2 class="anime-title">' +
+      L(active, "title") +
+      "</h2>" +
       videoSlotHTML(active) +
       "</div>" +
       "</div>" +
       "</div>" +
-      '<h2 class="anime-summary-heading">Summary</h2>' +
-      '<div class="anime-summary-panel"><div class="anime-summary-inner"><p class="anime-summary">' + active.summary + "</p></div></div>";
+      '<h2 class="anime-summary-heading" data-i18n="anime.summary">' +
+      T("anime.summary", "Summary") +
+      "</h2>" +
+      '<div class="anime-summary-panel"><div class="anime-summary-inner"><p class="anime-summary">' +
+      L(active, "summary") +
+      "</p></div></div>";
 
-    const summaryHeading = detail.querySelector(".anime-summary-heading");
-    if (summaryHeading) {
-      if (headingObserver) headingObserver.observe(summaryHeading);
-      else summaryHeading.classList.add("revealed"); // no IntersectionObserver support: just show it
-    }
+    // The summary paragraph gets the same bottom-to-top reveal as its
+    // heading (see #animeDetail .anime-summary in style.css)
+    detail.querySelectorAll(".anime-summary-heading, .anime-summary").forEach((el) => {
+      if (headingObserver) headingObserver.observe(el);
+      else el.classList.add("revealed"); // no IntersectionObserver support: just show it
+    });
 
     // If the configured preview clip 404s (or isn't there yet), fall back
     // to the same "coming soon" placeholder instead of a broken player.
@@ -88,10 +132,150 @@
       );
     }
 
-    document.title = active.title + " | 異世界コレクション";
+    // The custom play button (poster + centered circle, see
+    // .anime-video-play in style.css) stands in for the native controls
+    // until playback actually starts — a native scrubber sitting on top of
+    // the poster before anyone's pressed play would fight the custom
+    // button visually. Once clicked, native controls take over completely
+    // (so seeking/volume/fullscreen all still work); "ended" swaps back to
+    // the poster + button rather than leaving a frozen last frame with a
+    // stuck control bar.
+    const playBtn = detail.querySelector(".anime-video-play");
+    // Click / tap anywhere on the picture to pause or play, like the music
+    // page's video. An invisible layer over the picture (everything but the
+    // native control bar along the bottom) takes the tap itself: on phones
+    // the browser keeps taps on the video for showing/hiding its own
+    // controls, so a click handler on the <video> never heard them.
+    //
+    // Mouse only, though: on phones the browser's own controls sit ON the
+    // picture (iPhone: fullscreen top left, sound top right, skip back /
+    // forward beside play), so the layer swallowed every tap meant for
+    // them and only ever played/paused. There the native controls handle
+    // everything, tap-to-pause included.
+    const mouse = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const tapLayer = mouse.matches ? detail.querySelector(".anime-video-tap") : null;
+    if (video && playBtn) {
+      playBtn.addEventListener("click", () => {
+        video.controls = true;
+        video.play();
+        playBtn.classList.add("is-hidden");
+        if (tapLayer) tapLayer.hidden = false;
+      });
+      video.addEventListener("ended", () => {
+        video.controls = false;
+        playBtn.classList.remove("is-hidden");
+        if (tapLayer) tapLayer.hidden = true;
+      });
+      if (tapLayer) {
+        tapLayer.addEventListener("click", () => {
+          if (video.paused) video.play().catch(() => {});
+          else video.pause();
+        });
+      }
+
+      // In fullscreen (the native control bar's own button, bottom right)
+      // only the <video> is on screen, so the tap layer above is left
+      // behind: there, a tap on the picture (not the control bar, and not
+      // a drag) pauses/plays from here — mouse only, a finger tap is left
+      // to the browser's own controls. A mouse click is often toggled by
+      // the browser itself, so it checks a moment later and only steps in
+      // if the browser didn't.
+      // (also marks it .is-fullscreen: whole video + black bars, style.css)
+      // Leaving fullscreen keeps it playing: iPhone's player (and some
+      // others) pause the video as it closes. A pause that lands right as
+      // fullscreen ends is undone; one you made earlier stays.
+      const FS_PAUSE_WINDOW_MS = 500;
+      let heardPlaying = false;
+      let lastPauseAt = -Infinity;
+      let fsEndedAt = -Infinity;
+      let resumeAfterFs = false;
+      let wasFs = false;
+      video.addEventListener("play", () => {
+        heardPlaying = true;
+      });
+      video.addEventListener("pause", () => {
+        const t = performance.now();
+        if (resumeAfterFs && !video.ended && t - fsEndedAt < FS_PAUSE_WINDOW_MS) {
+          video.play().catch(() => {});
+          return;
+        }
+        heardPlaying = false;
+        lastPauseAt = t;
+      });
+      const onFsEnd = () => {
+        const t = performance.now();
+        fsEndedAt = t;
+        resumeAfterFs =
+          !video.ended && (!video.paused || heardPlaying || t - lastPauseAt < FS_PAUSE_WINDOW_MS);
+        if (resumeAfterFs && video.paused) video.play().catch(() => {});
+      };
+      video.addEventListener("webkitendfullscreen", onFsEnd); // iPhone
+
+      // Picture in picture: the slot shows the anime's carousel picture
+      // instead of sitting empty while the video plays in its little window
+      const pipImg = detail.querySelector(".anime-video-pip");
+      const syncPip = () => {
+        const pip =
+          document.pictureInPictureElement === video ||
+          video.webkitPresentationMode === "picture-in-picture";
+        if (pipImg) pipImg.hidden = !pip;
+      };
+      video.addEventListener("enterpictureinpicture", syncPip);
+      video.addEventListener("leavepictureinpicture", syncPip);
+      video.addEventListener("webkitpresentationmodechanged", syncPip);
+
+      const markFullscreen = () => {
+        const fs = document.fullscreenElement || document.webkitFullscreenElement;
+        video.classList.toggle("is-fullscreen", fs === video);
+        if (wasFs && fs !== video) onFsEnd();
+        wasFs = fs === video;
+      };
+      video.addEventListener("fullscreenchange", markFullscreen);
+      video.addEventListener("webkitfullscreenchange", markFullscreen);
+      const CONTROL_BAR_PX = 56;
+      let downX = 0;
+      let downY = 0;
+      video.addEventListener("pointerdown", (e) => {
+        downX = e.clientX;
+        downY = e.clientY;
+      });
+      video.addEventListener("pointerup", (e) => {
+        const fs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (fs !== video) return;
+        if (Math.abs(e.clientX - downX) > 10 || Math.abs(e.clientY - downY) > 10) return;
+        if (e.clientY > video.getBoundingClientRect().bottom - CONTROL_BAR_PX) return;
+        // touch: the browser's fullscreen controls handle taps themselves
+        // (a tap shows them; pausing here would fight that, see above)
+        if (e.pointerType !== "mouse") return;
+        const wasPaused = video.paused;
+        setTimeout(() => {
+          if (video.paused !== wasPaused) return; // the browser already did it
+          if (wasPaused) video.play().catch(() => {});
+          else video.pause();
+        }, 300);
+      });
+    }
+
+    document.title = L(active, "title") + " | 異世界コレクション";
 
     fitVideoSlot();
   }
+
+  // JP / EN switched: swap the text in place rather than re-rendering, so
+  // a preview video that's playing keeps playing (the fixed strings marked
+  // data-i18n are already swapped by i18n.js)
+  document.addEventListener("langchange", () => {
+    const active = getActive(currentId);
+    const title = L(active, "title");
+    const titleEl = detail.querySelector(".anime-title");
+    if (titleEl) titleEl.textContent = title;
+    const cover = detail.querySelector(".anime-cover img");
+    if (cover) cover.alt = title;
+    const summary = detail.querySelector(".anime-summary");
+    if (summary) summary.textContent = L(active, "summary");
+    document.title = title + " | 異世界コレクション";
+    fitVideoSlot(); // a longer/shorter title changes the room left for the video
+  });
 
   // Caps the video slot's height to whatever's left below the title
   // within .anime-cover's own height, so a 16:9 box (see .anime-video-slot
@@ -131,7 +315,10 @@
     // comes out the same regardless of how many lines the title actually
     // wraps to — that's what keeps the video landing on the cover's
     // bottom edge instead of stopping short for a short title.
-    const heightBudget = Math.max(cover.getBoundingClientRect().bottom - videoSlot.getBoundingClientRect().top, 0);
+    const heightBudget = Math.max(
+      cover.getBoundingClientRect().bottom - videoSlot.getBoundingClientRect().top,
+      0,
+    );
     // As wide as the column allows, translated to the height that would
     // need at 16:9 — the smaller of that and heightBudget is the actual
     // limiting dimension, so computing both in real px (rather than
@@ -168,345 +355,8 @@
   window.renderAnimePage = render;
 })();
 
-// ===== "Anime" title entrance animation =====
-// Identical timing/technique to character.html's title (js/character-page.js)
-// — duplicated rather than shared so each page's script stays self-contained.
-(function () {
-  const content = document.querySelector(".title-content");
-  const cover = document.querySelector(".title-cover");
-  if (!content || !cover) return;
-
-  const BUILD_SECONDS = 0.5;
-  const HOLD_SECONDS = 0;
-  const WIPE_SECONDS = 0.5;
-
-  const buildMs = BUILD_SECONDS * 1000;
-  const holdMs = HOLD_SECONDS * 1000;
-  const wipeMs = WIPE_SECONDS * 1000;
-  const totalMs = buildMs + holdMs + wipeMs;
-  const revealOffset = (buildMs + holdMs) / totalMs;
-  const easing = "cubic-bezier(0.65, 0, 0.35, 1)";
-
-  cover.animate(
-    [
-      { left: "0%", width: "0%", offset: 0, easing },
-      { left: "0%", width: "100%", offset: buildMs / totalMs, easing },
-      { left: "0%", width: "100%", offset: revealOffset, easing },
-      { left: "100%", width: "0%", offset: 1 },
-    ],
-    { duration: totalMs, fill: "forwards" },
-  );
-
-  content.animate(
-    [
-      { opacity: 0, offset: 0 },
-      { opacity: 0, offset: Math.max(0, revealOffset - 0.001) },
-      { opacity: 1, offset: revealOffset },
-      { opacity: 1, offset: 1 },
-    ],
-    { duration: totalMs, fill: "forwards" },
-  );
-})();
-
-// ===== Bottom "Browse Anime" Drawer =====
-// A bottom sheet that always peeks its round handle above the fold
-// (see .anime-drawer in style.css) and slides open to a compact 3-up,
-// looping, draggable carousel over every anime in ANIMES — the same
-// clone-cycle + pointer-drag technique as the Favourite carousel and the
-// Anime/Game preview tracks on Home (js/main.js), adapted for a 3-wide
-// window instead of one centered slide. Clicking an item switches the
-// page in place (pushState) instead of a full reload.
-(function () {
-  const drawer = document.getElementById("animeDrawer");
-  const handle = document.getElementById("animeDrawerHandle");
-  const track = document.getElementById("animeDrawerTrack");
-  const prevBtn = document.getElementById("drawerPrev");
-  const nextBtn = document.getElementById("drawerNext");
-  if (!drawer || !handle || !track || !prevBtn || !nextBtn || typeof ANIMES === "undefined") return;
-
-  function currentId() {
-    return new URLSearchParams(location.search).get("id") || ANIMES[0].id;
-  }
-
-  function itemNode(anime) {
-    const a = document.createElement("a");
-    a.className = "drawer-item";
-    a.href = "anime.html?id=" + anime.id;
-    a.dataset.id = anime.id;
-    // A plain <a> (and the <img> inside it) is natively draggable in every
-    // browser by default — starting that native "drag this link/image"
-    // gesture fires pointercancel for the custom carousel drag below,
-    // aborting it before it ever sees real movement, which is what made
-    // dragging a card feel like nothing happened except a link preview
-    // popping out. draggable="false" on both is the actual, reliable fix
-    // (the CSS -webkit-user-drag/user-drag properties below are a
-    // Chromium-only backstop, not a substitute — Firefox ignores them).
-    a.draggable = false;
-    a.innerHTML =
-      '<div class="drawer-item-frame"><img src="' + anime.thumb + '" alt="' + anime.title + '" draggable="false"></div>' +
-      '<p class="drawer-item-title">' + anime.title + "</p>";
-    return a;
-  }
-
-  ANIMES.forEach((anime) => track.appendChild(itemNode(anime)));
-  const realSlides = Array.from(track.children);
-  const realCount = realSlides.length;
-
-  // Several full extra copies either side (not just one edge item) so the
-  // real 5-item list still has correctly-labeled neighbors to slide
-  // through several drags/clicks in a row before the quiet-period snap-back
-  // (scheduleSnap below) re-centers it onto the real range.
-  const CYCLES = 6;
-
-  function buildCycles() {
-    const fragment = document.createDocumentFragment();
-    for (let c = 0; c < CYCLES; c++) {
-      realSlides.forEach((s) => {
-        const clone = s.cloneNode(true);
-        clone.setAttribute("aria-hidden", "true");
-        clone.setAttribute("tabindex", "-1");
-        fragment.appendChild(clone);
-      });
-    }
-    return fragment;
-  }
-
-  track.insertBefore(buildCycles(), track.firstChild);
-  track.appendChild(buildCycles());
-
-  const slides = Array.from(track.children);
-  const realStart = CYCLES * realCount;
-  const initialRealIndex = Math.max(0, ANIMES.findIndex((a) => a.id === currentId()));
-
-  let pos = realStart + initialRealIndex;
-  const TRANSITION_MS = 400;
-  let snapTimer = null;
-
-  function updateActive() {
-    const id = currentId();
-    slides.forEach((el) => el.classList.toggle("active", el.dataset.id === id));
-  }
-
-  // getBoundingClientRect() (fractional/subpixel) rather than offsetWidth
-  // (rounded to a whole pixel) — this gets multiplied by a large index
-  // (deep into the cloned cycles, see realStart above), so even a
-  // fraction-of-a-pixel rounding error compounds into a visible several-px
-  // drift. That drift was landing the visible window slightly short on the
-  // left (a gap of background peeking in before the first card) while the
-  // right card ran past the clipped edge instead — looking like only the
-  // left side was "blocked."
-  function slideStepPx() {
-    const gap = parseFloat(getComputedStyle(track).gap) || 0;
-    return slides[0].getBoundingClientRect().width + gap;
-  }
-
-  function render(withTransition) {
-    track.style.transition = withTransition ? "" : "none";
-    // Forces the browser to commit the transition change above before the
-    // transform below changes — see the identical comment on the
-    // Favourite carousel (js/main.js) for why this matters.
-    void track.offsetWidth;
-
-    const maxPos = slides.length - 1;
-    const clampedPos = Math.min(Math.max(pos, 0), maxPos);
-    const offset = clampedPos * slideStepPx();
-    track.style.transform = `translateX(-${offset}px)`;
-  }
-
-  function scheduleSnap() {
-    if (snapTimer) clearTimeout(snapTimer);
-    snapTimer = setTimeout(() => {
-      const realIndex = ((pos - realStart) % realCount + realCount) % realCount;
-      const target = realStart + realIndex;
-      if (pos !== target) {
-        pos = target;
-        render(false);
-      }
-    }, TRANSITION_MS + 50);
-  }
-
-  function goTo(newPos) {
-    pos = newPos;
-    render(true);
-    scheduleSnap();
-  }
-
-  function next() {
-    goTo(pos + 1);
-  }
-
-  function prev() {
-    goTo(pos - 1);
-  }
-
-  prevBtn.addEventListener("click", prev);
-  nextBtn.addEventListener("click", next);
-
-  // ----- Drag the cards themselves -----
-  // Same deferred-pointer-capture pattern as js/main.js's card drag: drag
-  // mode (and pointer capture) only actually engages once the pointer has
-  // moved past a small threshold, so a plain click on a card still reaches
-  // its <a> and navigates normally — setting pointer capture unconditionally
-  // on pointerdown would otherwise retarget the click that follows away
-  // from the card and silently swallow it.
-  let pointerActive = false;
-  let dragStarted = false;
-  let activePointerId = null;
-  let dragStartX = 0;
-  let dragStartPos = 0;
-  let latestDelta = 0;
-  let dragRAF = null;
-  const DRAG_THRESHOLD_PX = 6;
-
-  function applyDragFrame() {
-    const basePx = dragStartPos * slideStepPx();
-    track.style.transform = `translateX(-${basePx - latestDelta}px)`;
-    dragRAF = null;
-  }
-
-  function beginDrag() {
-    dragStarted = true;
-    dragStartPos = pos;
-    track.style.transition = "none";
-    track.classList.add("track-dragging");
-    track.setPointerCapture(activePointerId);
-  }
-
-  track.addEventListener("pointerdown", (e) => {
-    pointerActive = true;
-    dragStarted = false;
-    activePointerId = e.pointerId;
-    dragStartX = e.clientX;
-    latestDelta = 0;
-  });
-
-  track.addEventListener("pointermove", (e) => {
-    if (!pointerActive) return;
-    latestDelta = e.clientX - dragStartX;
-    if (!dragStarted) {
-      if (Math.abs(latestDelta) < DRAG_THRESHOLD_PX) return;
-      beginDrag();
-    }
-    if (dragRAF === null) dragRAF = requestAnimationFrame(applyDragFrame);
-  });
-
-  function endDrag() {
-    if (!pointerActive) return;
-    pointerActive = false;
-    if (dragRAF !== null) {
-      cancelAnimationFrame(dragRAF);
-      dragRAF = null;
-    }
-    // Never crossed the drag threshold: a plain click/tap, pointer capture
-    // was never engaged, so its own click reaches the card and navigates —
-    // nothing to unwind here.
-    if (!dragStarted) return;
-    dragStarted = false;
-    track.style.transition = "";
-    track.classList.remove("track-dragging");
-    // Uses the running latestDelta (kept current by pointermove) rather
-    // than re-deriving it from whichever event ended the drag — pointerup
-    // isn't the only way a drag can end (see lostpointercapture below), and
-    // some of those don't carry a meaningful clientX of their own.
-    goTo(Math.round(dragStartPos - latestDelta / slideStepPx()));
-  }
-
-  track.addEventListener("pointerup", endDrag);
-  track.addEventListener("pointercancel", endDrag);
-  // Fires whenever capture is released for any reason — the reliable
-  // signal that a drag is over, regardless of whether pointerup itself
-  // made it back to this element (e.g. a fast synthetic/automated drag,
-  // or the pointer straying outside the window mid-gesture).
-  track.addEventListener("lostpointercapture", endDrag);
-
-  // A real drag retargets its trailing click to `track` itself (see
-  // above), so this only ever runs for a plain click that lands on a card.
-  track.addEventListener("click", (e) => {
-    const link = e.target.closest("a[data-id]");
-    if (!link) return;
-    e.preventDefault();
-    const id = link.dataset.id;
-    if (id === currentId()) return;
-    history.pushState(null, "", "anime.html?id=" + id);
-    if (typeof window.renderAnimePage === "function") window.renderAnimePage(id);
-    updateActive();
-  });
-
-  // ----- Drag the handle to open/close the drawer -----
-  // Same deferred-pointer-capture pattern as the card drag above: dragging
-  // is only actually engaged once the pointer crosses a small threshold,
-  // so a plain click still reaches the click handler further down (a real
-  // drag's trailing click retargets to `handle` via pointer capture, same
-  // element the click listener is already on, so it'd otherwise also fire
-  // and re-toggle right back — guarded against below with justDragged).
-  function closedOffsetPx() {
-    return drawer.getBoundingClientRect().height - handle.getBoundingClientRect().height;
-  }
-
-  let handlePointerActive = false;
-  let handleDragStarted = false;
-  let handleJustDragged = false;
-  let handleActivePointerId = null;
-  let handleStartY = 0;
-  let handleBaseOffset = 0;
-  let handleLastOffset = 0;
-  const HANDLE_DRAG_THRESHOLD_PX = 4;
-
-  function beginHandleDrag() {
-    handleDragStarted = true;
-    handleBaseOffset = drawer.classList.contains("open") ? 0 : closedOffsetPx();
-    drawer.style.transition = "none";
-    handle.setPointerCapture(handleActivePointerId);
-  }
-
-  handle.addEventListener("pointerdown", (e) => {
-    handlePointerActive = true;
-    handleDragStarted = false;
-    handleActivePointerId = e.pointerId;
-    handleStartY = e.clientY;
-  });
-
-  handle.addEventListener("pointermove", (e) => {
-    if (!handlePointerActive) return;
-    const delta = e.clientY - handleStartY;
-    if (!handleDragStarted) {
-      if (Math.abs(delta) < HANDLE_DRAG_THRESHOLD_PX) return;
-      beginHandleDrag();
-    }
-    const max = closedOffsetPx();
-    handleLastOffset = Math.min(Math.max(handleBaseOffset + delta, 0), max);
-    drawer.style.transform = `translateY(${handleLastOffset}px)`;
-  });
-
-  function endHandleDrag() {
-    if (!handlePointerActive) return;
-    handlePointerActive = false;
-    if (!handleDragStarted) return; // plain click/tap — the click handler below runs instead
-    handleDragStarted = false;
-    handleJustDragged = true;
-    drawer.style.transition = "";
-    drawer.style.transform = "";
-    const isOpen = handleLastOffset < closedOffsetPx() / 2;
-    drawer.classList.toggle("open", isOpen);
-    handle.setAttribute("aria-expanded", String(isOpen));
-  }
-
-  handle.addEventListener("pointerup", endHandleDrag);
-  handle.addEventListener("pointercancel", endHandleDrag);
-  handle.addEventListener("lostpointercapture", endHandleDrag);
-
-  handle.addEventListener("click", () => {
-    if (handleJustDragged) {
-      handleJustDragged = false;
-      return;
-    }
-    const isOpen = drawer.classList.toggle("open");
-    handle.setAttribute("aria-expanded", String(isOpen));
-  });
-
-  window.addEventListener("popstate", updateActive);
-  window.addEventListener("resize", () => render(false));
-
-  updateActive();
-  render(false);
-})();
+initBrowseDrawer({
+  items: typeof ANIMES === "undefined" ? [] : ANIMES,
+  page: "anime.html",
+  onSelect: (id) => window.renderAnimePage && window.renderAnimePage(id),
+});

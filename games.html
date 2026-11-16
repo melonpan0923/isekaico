@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game | 異世界コレクション</title>
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" href="assets/icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="css/style.css?v=234">
+<!-- Start downloading a page as soon as the pointer rests on a link to it,
+     so clicking through feels instant (browsers without support ignore this) -->
+<script type="speculationrules">
+{ "prefetch": [{ "where": { "href_matches": "/*" }, "eagerness": "moderate" }] }
+</script>
+</head>
+<body>
+<script src="js/loader.js?v=8"></script>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="index.html" class="site-title">
+      <img class="title-chibi" src="assets/images/title/ram.png" width="20" height="34" alt="" draggable="false">
+      <span class="title-text">
+        <span class="title-top">異世界コレクション</span>
+        <span class="title-bottom">isekaicollection</span>
+      </span>
+      <img class="title-chibi" src="assets/images/title/rem.png" width="20" height="34" alt="" draggable="false">
+    </a>
+  </div>
+
+  <nav class="main-nav">
+    <span class="nav-group nav-group-start">
+      <a href="index.html" class="nav-link" data-i18n="nav.home">Home</a>
+      <a href="anime.html" class="nav-link" data-i18n="nav.anime">Anime</a>
+    </span>
+    <a href="character.html" class="nav-link" data-i18n="nav.character">Character</a>
+    <span class="nav-group nav-group-end">
+      <a href="music.html" class="nav-link" data-i18n="nav.music">Music</a>
+      <a href="games.html" class="nav-link active" data-i18n="nav.game">Game</a>
+    </span>
+  </nav>
+
+  <div class="topbar-right">
+    <div class="lang-toggle">
+      <span class="lang-option active">EN</span>
+      <span class="lang-divider">|</span>
+      <span class="lang-option">JP</span>
+    </div>
+
+    <div class="music-control">
+      <button id="musicToggle" class="music-toggle" aria-haspopup="dialog" aria-expanded="false" aria-label="Open Now Playing">
+        <img class="icon-note" src="assets/images/home/Sound.webp" alt="">
+      </button>
+
+      <label class="music-switch" aria-label="Play or pause background music">
+        <input type="checkbox" id="musicSwitch">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+      </label>
+    </div>
+  </div>
+</header>
+
+<audio id="bgm" src="assets/audio/home/Constant%20Moderato.mp3" preload="none"></audio>
+
+<div class="now-playing-view" id="nowPlayingView" role="dialog" aria-modal="true" aria-label="Now playing" hidden>
+  <button class="np-close" id="npClose" aria-label="Close Now Playing">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+
+  <div class="player-art-wrap">
+    <div class="player-art" id="playerArt" aria-hidden="true"></div>
+  </div>
+
+  <div class="np-below">
+    <h3 class="player-title" id="playerTitle">Constant Moderato</h3>
+    <p class="player-artist" id="playerArtist">ブルアカ</p>
+
+    <div class="player-scrubber">
+      <div class="player-track" id="playerTrack">
+        <div class="player-fill" id="playerFill"></div>
+        <div class="player-thumb" id="playerThumb"></div>
+      </div>
+      <div class="player-time-row">
+        <span id="playerCurrent">0:00</span>
+        <span id="playerRemaining">-0:00</span>
+      </div>
+    </div>
+
+    <div class="player-controls">
+      <button class="player-btn icon-shuffle" id="shuffleBtn" aria-pressed="false" aria-label="Toggle shuffle">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="4"/>
+          <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+
+      <button class="player-btn" id="restartBtn" aria-label="Restart song">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 6h2v12H6z"/>
+          <path d="M20 6v12L9 12z"/>
+        </svg>
+      </button>
+
+      <button class="player-play" id="playBtn" aria-label="Play">
+        <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+
+      <button class="player-btn" id="nextBtn" aria-label="Next song">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18 6h-2v12h2z"/>
+          <path d="M4 6v12l11-6z"/>
+        </svg>
+      </button>
+
+      <button class="player-btn icon-repeat" id="repeatBtn" aria-pressed="false" aria-label="Toggle repeat">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <canvas class="np-visualizer" id="visualizerCanvas" aria-hidden="true"></canvas>
+</div>
+
+<main class="sparkle-bg">
+
+  <section class="character-hero" aria-label="Game">
+    <h1 class="character-hero-title">
+      <span class="title-content" data-i18n="page.game">Game</span>
+      <span class="title-cover" aria-hidden="true"></span>
+    </h1>
+  </section>
+
+  <section class="anime-detail" id="gameDetail" aria-live="polite"></section>
+
+</main>
+
+<div class="anime-drawer-anchor" id="animeDrawerAnchor" aria-hidden="true"></div>
+<div class="anime-drawer" id="animeDrawer">
+  <button class="anime-drawer-handle" id="animeDrawerHandle" aria-expanded="false" aria-label="Browse games" data-i18n-aria="game.browse">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>
+  </button>
+  <div class="anime-drawer-panel">
+    <button class="drawer-nav drawer-nav-left" id="drawerPrev" aria-label="Previous game" data-i18n-aria="game.prev">&#10094;</button>
+    <div class="anime-drawer-viewport">
+      <div class="anime-drawer-track" id="animeDrawerTrack"></div>
+    </div>
+    <button class="drawer-nav drawer-nav-right" id="drawerNext" aria-label="Next game" data-i18n-aria="game.next">&#10095;</button>
+  </div>
+</div>
+
+<button id="backToTop" class="back-to-top" aria-label="Back to top" data-i18n-aria="aria.backToTop">
+  <span class="icon-totop-flip">
+    <img class="icon-totop" src="assets/images/home/pyroxene.png" alt="Back to top">
+  </span>
+</button>
+
+<script src="js/i18n.js?v=10"></script>
+<script src="js/main.js?v=34"></script>
+<script src="js/games.js?v=31"></script>
+<script src="js/browse-drawer.js?v=10"></script>
+<script src="js/page-title.js?v=3"></script>
+<script src="js/game-page.js?v=65"></script>
+</body>
+</html>

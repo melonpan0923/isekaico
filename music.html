@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music | 異世界コレクション</title>
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" href="assets/icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css?v=234">
+<!-- Start downloading a page as soon as the pointer rests on a link to it,
+     so clicking through feels instant (browsers without support ignore this) -->
+<script type="speculationrules">
+{ "prefetch": [{ "where": { "href_matches": "/*" }, "eagerness": "moderate" }] }
+</script>
+</head>
+<body>
+<script src="js/loader.js?v=8"></script>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="index.html" class="site-title">
+      <img class="title-chibi" src="assets/images/title/ram.png" width="20" height="34" alt="" draggable="false">
+      <span class="title-text">
+        <span class="title-top">異世界コレクション</span>
+        <span class="title-bottom">isekaicollection</span>
+      </span>
+      <img class="title-chibi" src="assets/images/title/rem.png" width="20" height="34" alt="" draggable="false">
+    </a>
+  </div>
+
+  <nav class="main-nav">
+    <span class="nav-group nav-group-start">
+      <a href="index.html" class="nav-link" data-i18n="nav.home">Home</a>
+      <a href="anime.html" class="nav-link" data-i18n="nav.anime">Anime</a>
+    </span>
+    <a href="character.html" class="nav-link" data-i18n="nav.character">Character</a>
+    <span class="nav-group nav-group-end">
+      <a href="music.html" class="nav-link active" data-i18n="nav.music">Music</a>
+      <a href="games.html" class="nav-link" data-i18n="nav.game">Game</a>
+    </span>
+  </nav>
+
+  <div class="topbar-right">
+    <div class="lang-toggle">
+      <span class="lang-option active">EN</span>
+      <span class="lang-divider">|</span>
+      <span class="lang-option">JP</span>
+    </div>
+
+    <div class="music-control">
+      <button id="musicToggle" class="music-toggle" aria-haspopup="dialog" aria-expanded="false" aria-label="Open Now Playing">
+        <img class="icon-note" src="assets/images/home/Sound.webp" alt="">
+      </button>
+
+      <label class="music-switch" aria-label="Play or pause background music">
+        <input type="checkbox" id="musicSwitch">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+      </label>
+    </div>
+  </div>
+</header>
+
+<audio id="bgm" src="assets/audio/home/Constant%20Moderato.mp3" preload="none"></audio>
+
+<div class="now-playing-view" id="nowPlayingView" role="dialog" aria-modal="true" aria-label="Now playing" hidden>
+  <button class="np-close" id="npClose" aria-label="Close Now Playing">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+
+  <div class="player-art-wrap">
+    <div class="player-art" id="playerArt" aria-hidden="true"></div>
+  </div>
+
+  <div class="np-below">
+    <h3 class="player-title" id="playerTitle">Constant Moderato</h3>
+    <p class="player-artist" id="playerArtist">ブルアカ</p>
+
+    <div class="player-scrubber">
+      <div class="player-track" id="playerTrack">
+        <div class="player-fill" id="playerFill"></div>
+        <div class="player-thumb" id="playerThumb"></div>
+      </div>
+      <div class="player-time-row">
+        <span id="playerCurrent">0:00</span>
+        <span id="playerRemaining">-0:00</span>
+      </div>
+    </div>
+
+    <div class="player-controls">
+      <button class="player-btn icon-shuffle" id="shuffleBtn" aria-pressed="false" aria-label="Toggle shuffle">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="4"/>
+          <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+          <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+
+      <button class="player-btn" id="restartBtn" aria-label="Restart song">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 6h2v12H6z"/>
+          <path d="M20 6v12L9 12z"/>
+        </svg>
+      </button>
+
+      <button class="player-play" id="playBtn" aria-label="Play">
+        <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+
+      <button class="player-btn" id="nextBtn" aria-label="Next song">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18 6h-2v12h2z"/>
+          <path d="M4 6v12l11-6z"/>
+        </svg>
+      </button>
+
+      <button class="player-btn icon-repeat" id="repeatBtn" aria-pressed="false" aria-label="Toggle repeat">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <canvas class="np-visualizer" id="visualizerCanvas" aria-hidden="true"></canvas>
+</div>
+
+<main class="character-page music-page">
+
+  <section class="character-hero" aria-label="Music">
+    <h1 class="character-hero-title">
+      <span class="title-content" data-i18n="page.music">Music</span>
+      <span class="title-cover" aria-hidden="true"></span>
+    </h1>
+  </section>
+
+  <section class="char-select" aria-label="Choose an artist" data-i18n-aria="music.chooseArtist">
+    <div class="char-select-track" id="artistSelectTrack"></div>
+  </section>
+
+  <!-- Now playing: stays collapsed until the first song starts. The sound
+       always plays from the hidden <audio id="songAudio"> (phones keep it
+       going with the screen locked); the <video> is a muted picture kept in
+       time with it, so switching Song/Video never restarts the track. -->
+  <section class="music-stage" id="musicStage" aria-label="Now playing" aria-hidden="true">
+    <div class="music-stage-inner">
+      <!-- Player column. When lyrics are on, the lyrics panel opens beside
+           it and the pair stays centered (the player slides left). -->
+      <div class="stage-main">
+      <div class="stage-media" id="stageMedia" data-mode="cover">
+        <img class="stage-cover" id="stageCover" alt="" draggable="false">
+        <video class="stage-video" id="songMedia" playsinline muted preload="metadata"></video>
+        <audio id="songAudio" preload="metadata"></audio>
+        <div class="stage-flash" id="stageFlash" aria-hidden="true"></div>
+        <button class="stage-fs" id="stageFs" type="button" aria-label="Full screen" data-i18n-aria="music.fullscreen" title="Full screen (F)">
+          <svg class="icon-fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          <svg class="icon-fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+        </button>
+      </div>
+
+      <div class="stage-modes" id="stageModes" role="tablist" aria-label="Display mode" hidden>
+        <button class="stage-mode active" type="button" role="tab" data-mode="cover" aria-selected="true" data-i18n="music.modeSong">Song</button>
+        <button class="stage-mode" type="button" role="tab" data-mode="video" aria-selected="false" data-i18n="music.modeVideo">Video</button>
+      </div>
+
+      <!-- Lyrics / 歌詞 on-off slide switch. Only shown for songs with lyrics. -->
+      <button class="lyrics-switch" id="lyricsToggle" type="button" role="switch" aria-checked="false" hidden>
+        <span class="lyrics-switch-label" data-i18n="music.lyrics">Lyrics</span>
+        <span class="lyrics-switch-track" aria-hidden="true"><span class="lyrics-switch-thumb"></span></span>
+      </button>
+
+      <div class="stage-info">
+        <p class="stage-title" id="stageTitle"></p>
+        <p class="stage-artist" id="stageArtist"></p>
+      </div>
+
+      <div class="stage-progress">
+        <span class="stage-time" id="stageCurrent">0:00</span>
+        <input class="stage-seek" id="stageSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek" data-i18n-aria="music.seek">
+        <span class="stage-time" id="stageDuration">0:00</span>
+      </div>
+
+      <!-- Same icons, order and sizes as the top-right Now Playing player. -->
+      <div class="stage-controls">
+        <button class="stage-btn" id="stageShuffle" type="button" aria-pressed="false" aria-label="Toggle shuffle" data-i18n-aria="music.shuffle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="16" rx="4"/>
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+            <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+        <button class="stage-btn" id="stagePrev" type="button" aria-label="Previous song" data-i18n-aria="music.prev">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6z"/><path d="M20 6v12L9 12z"/></svg>
+        </button>
+        <button class="stage-play" id="stagePlay" type="button" aria-label="Play" data-i18n-aria="music.play">
+          <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+          <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+        </button>
+        <button class="stage-btn" id="stageNext" type="button" aria-label="Next song" data-i18n-aria="music.next">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2v12h2z"/><path d="M4 6v12l11-6z"/></svg>
+        </button>
+        <button class="stage-btn" id="stageRepeat" type="button" aria-pressed="false" aria-label="Toggle repeat" data-i18n-aria="music.repeat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"/>
+          </svg>
+        </button>
+      </div>
+      </div>
+
+      <aside class="stage-lyrics" id="stageLyrics" aria-label="Lyrics" data-i18n-aria="music.lyrics" aria-hidden="true" inert>
+        <div class="lyrics-scroll" id="lyricsScroll">
+          <ol class="lyrics-lines" id="lyricsLines"></ol>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="song-panel" aria-label="Songs">
+    <div class="song-panel-head">
+      <div class="song-panel-heading">
+        <h2 class="song-panel-title" id="songPanelTitle">All songs</h2>
+        <p class="song-panel-count" id="songPanelCount"></p>
+      </div>
+
+      <div class="song-sort">
+        <button class="song-sort-btn" id="songSortBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span id="songSortLabel">Custom order</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        </button>
+        <div class="song-sort-menu" id="songSortMenu" role="menu" hidden>
+          <p class="song-sort-menu-label" data-i18n="music.sortBy">Sort by</p>
+          <button class="song-sort-option" type="button" role="menuitemradio" data-sort="custom">Custom order</button>
+          <button class="song-sort-option" type="button" role="menuitemradio" data-sort="title">Title</button>
+          <button class="song-sort-option" type="button" role="menuitemradio" data-sort="artist">Artist</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="song-cols">
+      <button class="song-col-num song-col-sort" id="songColNum" type="button" aria-label="Sort by custom order">#</button>
+      <button class="song-col-sort" id="songColTitle" type="button" aria-label="Sort by title"><span data-i18n="music.colTitle">Title</span><span class="song-col-arrow" id="songColArrow"></span></button>
+      <span class="song-col-time" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      </span>
+    </div>
+
+    <ol class="song-list" id="songList"></ol>
+    <p class="song-hint" id="songHint" data-i18n-html="music.hint">Tip: switch to <strong>Custom order</strong> to drag songs around.</p>
+  </section>
+
+
+</main>
+
+<!-- Mini player: appears once the big player's controls scroll out of
+     view (js/music-page.js, "Mini player"). -->
+<div class="mini-player" id="miniPlayer" role="region" aria-label="Mini player" inert>
+  <button class="mini-art" id="miniArt" type="button" aria-label="Back to the player" data-i18n-aria="music.backToPlayer"><img id="miniCover" alt="" draggable="false"></button>
+  <button class="mini-info" id="miniInfo" type="button" aria-label="Back to the player" data-i18n-aria="music.backToPlayer">
+    <span class="mini-title"><span class="marquee-inner" id="miniTitle"></span></span>
+    <span class="mini-artist"><span class="marquee-inner" id="miniArtist"></span></span>
+  </button>
+  <div class="mini-controls">
+    <button class="mini-btn mini-toggle" id="miniShuffle" type="button" aria-pressed="false" aria-label="Toggle shuffle" data-i18n-aria="music.shuffle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="mini-btn" id="miniPrev" type="button" aria-label="Previous song" data-i18n-aria="music.prev">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6z"/><path d="M20 6v12L9 12z"/></svg>
+    </button>
+    <button class="mini-play" id="miniPlay" type="button" aria-label="Play" data-i18n-aria="music.play">
+      <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+      <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+    </button>
+    <button class="mini-btn" id="miniNext" type="button" aria-label="Next song" data-i18n-aria="music.next">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2v12h2z"/><path d="M4 6v12l11-6z"/></svg>
+    </button>
+    <button class="mini-btn mini-toggle" id="miniRepeat" type="button" aria-pressed="false" aria-label="Toggle repeat" data-i18n-aria="music.repeat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9.828 9.172a4 4 0 1 0 0 5.656a10 10 0 0 0 2.172 -2.828a10 10 0 0 1 2.172 -2.828a4 4 0 1 1 0 5.656a10 10 0 0 1 -2.172 -2.828a10 10 0 0 0 -2.172 -2.828"/></svg>
+    </button>
+  </div>
+  <!-- Lyrics while scrolled down: the current + next line float above the
+       bar, and the Lyrics switch beside it turns them on/off. -->
+  <div class="mini-lyrics" id="miniLyrics" aria-hidden="true">
+    <p class="mini-lyric-now" id="miniLyricNow"></p>
+    <p class="mini-lyric-next" id="miniLyricNext"></p>
+  </div>
+  <button class="lyrics-switch mini-lyrics-btn" id="miniLyricsBtn" type="button" role="switch" aria-checked="false" hidden>
+    <span class="lyrics-switch-label" data-i18n="music.lyrics">Lyrics</span>
+    <span class="lyrics-switch-track" aria-hidden="true"><span class="lyrics-switch-thumb"></span></span>
+  </button>
+  <div class="mini-progress" id="miniProgress" aria-hidden="true"><div class="mini-progress-fill" id="miniFill"></div></div>
+</div>
+
+<button id="backToTop" class="back-to-top" aria-label="Back to top" data-i18n-aria="aria.backToTop">
+  <span class="icon-totop-flip">
+    <img class="icon-totop" src="assets/images/home/pyroxene.png" alt="Back to top">
+  </span>
+</button>
+
+<script src="js/i18n.js?v=10"></script>
+<script src="js/main.js?v=34"></script>
+<script src="js/artists.js?v=6"></script>
+<script src="js/songs.js?v=35"></script>
+<script src="js/lyrics.js?v=7"></script>
+<script src="js/page-title.js?v=3"></script>
+<script src="js/music-page.js?v=42"></script>
+</body>
+</html>

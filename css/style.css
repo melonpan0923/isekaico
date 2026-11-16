@@ -1,5 +1,11 @@
 /* ===== Variables ===== */
 :root {
+  /* Room for Netlify's "Powered by Netlify" badge in the bottom-right
+     corner of the live site: js/main.js sets this to the badge's visible
+     height + a 4px gap once the badge appears. The crystal and the phone
+     mini player use max(their usual bottom offset, this), so they sit just
+     on top of the badge. 0 when there's no badge (e.g. running locally). */
+  --badge-space: 0px;
   --bg: #ffffff;
   --text: #222222;
   --text-soft: #666666;
@@ -42,7 +48,12 @@
 .sparkle-bg,
 .character-page,
 .favorites,
-.preview-section {
+.preview-sections-wrap,
+/* the page behind them too, so a short page on a tall screen (e.g.
+   character.html at 2560×1440) keeps the dots below its content instead
+   of ending on plain white */
+body:has(> main.sparkle-bg),
+body:has(> main.character-page) {
   background-color: #f9f8ff;
   background-image: var(--sparkle-dots);
   background-size: 100% 900px;
@@ -58,6 +69,17 @@
 
 html {
   scroll-behavior: smooth;
+  /* stop iPhone Safari enlarging text on its own (it did in the shrunk
+     game panels, pushing names past their boxes) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* The full-bleed panels/video are 1-2px wider than the screen on purpose
+     (no hairline gaps at the edges). iPhone Safari ignores body's
+     overflow-x: hidden, so the page could slide sideways by that much and
+     show a thin white strip down the right edge. clip (not hidden) cuts it
+     off without turning html into a scroll box, which would stop the
+     video banner's position: sticky from pinning. */
+  overflow-x: clip;
 }
 
 body {
@@ -66,6 +88,10 @@ body {
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Segoe UI", sans-serif;
   line-height: 1.5;
   overflow-x: hidden;
+  /* clip, like html above: with html no longer "visible", a plain hidden
+     here would make body its own scroll box and break position: sticky.
+     (Browsers without clip ignore both and keep the hidden.) */
+  overflow-x: clip;
 }
 
 a {
@@ -103,32 +129,68 @@ h2 {
   z-index: 10;
   background: var(--bg);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* Two equal outer columns keep the menu (and キャラクター, its middle link)
+     in the exact centre of the page. The title sits centred in the space left
+     of the menu, so screen edge → Ram equals Rem → ホーム. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 5vw;
+  row-gap: 1rem;
+  padding: 1rem 0; /* no side padding, or the centre would shift */
   border-bottom: 1px solid var(--border);
 }
 
 .topbar-left {
-  justify-self: start;
+  justify-self: center;
+  /* --nav-lead (set by main.js) is the empty bit before ホーム when the right
+     half of the menu is the longer one; the negative margin lets the title
+     centre on ホーム itself instead of the menu's box. */
+  margin-right: calc(-1 * var(--nav-lead, 0px));
 }
 
+/* Ram on the left, Rem on the right of the two-line title (pixel art from
+   D:\Asepritertwork
+am&rem.png, saved at 4x in assets/images/title/).
+   --tu shrinks the whole title a little on narrower screens so
+   the even gaps never get cramped. */
 .site-title {
+  --tu: clamp(0.8rem, calc(1.6vw - 0.2rem), 1rem); /* full size from 1200px */
   display: flex;
-  flex-direction: column;
-  line-height: 1.15;
+  align-items: center;
+  gap: calc(0.6 * var(--tu));
   -webkit-user-drag: none;
 }
 
+.title-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.title-chibi {
+  height: calc(2.65 * var(--tu)); /* about the two title lines */
+  width: auto;
+  flex-shrink: 0;
+  image-rendering: pixelated; /* keep the pixel art crisp, never blurred */
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 700px) {
+  .title-chibi {
+    height: 2.3rem;
+  }
+}
+
 .title-top {
-  font-size: 1.4rem;
+  font-size: calc(1.4 * var(--tu, 1rem));
   font-weight: 600;
   letter-spacing: 0.03em;
+  /* never broken onto two lines when the (Japanese) menu is long */
+  white-space: nowrap;
 }
 
 .title-bottom {
-  font-size: 0.85rem;
+  font-size: calc(0.85 * var(--tu, 1rem));
   color: var(--text-soft);
   text-align: center;
   text-transform: lowercase;
@@ -136,13 +198,25 @@ h2 {
 }
 
 .main-nav {
-  justify-self: center;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: clamp(0.9rem, 2vw, 1.8rem);
+  /* Home Anime | Character | Music Game: the two side groups get equal
+     widths, so Character is always the exact middle. */
+  --nav-gap: clamp(0.9rem, 2vw, 1.8rem);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  column-gap: var(--nav-gap);
+  white-space: nowrap; /* one row; the top bar stacks under 960px instead */
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.nav-group {
+  display: flex;
+  gap: var(--nav-gap);
+}
+
+.nav-group-start {
+  justify-content: flex-end;
 }
 
 .nav-link {
@@ -176,6 +250,7 @@ h2 {
 
 .topbar-right {
   justify-self: end;
+  margin-right: clamp(1rem, 3vw, 2.5rem);
   display: flex;
   align-items: center;
   gap: 1.1rem;
@@ -189,7 +264,10 @@ h2 {
   height: 2.25rem;
   border-radius: 50%;
   color: var(--text-soft);
-  transition: color 0.25s ease, background 0.25s ease, transform 0.2s ease;
+  transition:
+    color 0.25s ease,
+    background 0.25s ease,
+    transform 0.2s ease;
 }
 
 .music-toggle:hover {
@@ -307,7 +385,10 @@ h2 {
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.8);
-  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.15s ease;
   z-index: 2;
 }
 
@@ -340,7 +421,9 @@ h2 {
   height: 100%;
   border-radius: 1.1rem;
   overflow: hidden;
-  box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 20px 45px -15px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .player-art svg,
@@ -455,7 +538,9 @@ h2 {
   padding: 0.4rem;
   border-radius: 0.6rem;
   color: rgba(255, 255, 255, 0.6);
-  transition: color 0.2s ease, transform 0.15s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
 }
 
 .player-btn:hover {
@@ -485,7 +570,9 @@ h2 {
   align-items: center;
   justify-content: center;
   box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.6);
-  transition: transform 0.15s ease, background 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease;
 }
 
 .player-play:hover {
@@ -544,6 +631,22 @@ h2 {
   user-select: none;
 }
 
+/* EN / JP buttons (wired up by js/i18n.js) */
+.lang-option {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+
+.lang-option:hover {
+  color: var(--text);
+}
+
+.lang-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .lang-option.active {
   color: var(--text);
   font-weight: 600;
@@ -597,7 +700,9 @@ h2 {
   display: inline-block;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
 }
 
 .section-label.revealed .letter {
@@ -713,7 +818,9 @@ h2 {
   height: 0.6rem;
   border-radius: 50%;
   background: var(--border);
-  transition: background 0.25s ease, transform 0.25s ease;
+  transition:
+    background 0.25s ease,
+    transform 0.25s ease;
 }
 
 .dot.active {
@@ -743,10 +850,15 @@ h2 {
    everywhere else. Total height = the video panel itself + top overlap +
    hold + bottom overlap. */
 .video-banner {
-  --vb-panel: min(100vh, 860px);
-  --vb-top-overlap: calc(var(--vb-panel) * 0.6);
-  --vb-bottom-overlap: calc(var(--vb-panel) * 1.2);
-  --vb-hold: calc(var(--vb-panel) * 0.2326);
+  /* The pinned panel is always the full screen height — capping it (it
+     used to be min(100vh, 860px)) left the white page showing as a line /
+     strip under the video on screens taller than 860px. The overlaps keep
+     the cap, so the top overlap still stays under Favourite's height. */
+  --vb-panel: 100vh;
+  --vb-scale: min(100vh, 860px);
+  --vb-top-overlap: calc(var(--vb-scale) * 0.6);
+  --vb-bottom-overlap: calc(var(--vb-scale) * 1.2);
+  --vb-hold: calc(var(--vb-scale) * 0.2326);
   position: relative;
   z-index: 1;
   height: calc(var(--vb-panel) + var(--vb-top-overlap) + var(--vb-hold) + var(--vb-bottom-overlap));
@@ -776,6 +888,37 @@ h2 {
   display: block;
 }
 
+/* Phones: the top bar + Favourite fill the whole first screen (100svh:
+   the screen with Safari's toolbars showing, as it is when the page
+   opens), the carousel centered in it, so the page opens neatly on just
+   that and the video comes up from below once you scroll. --topbar-h is
+   measured by js/main.js. */
+@media (max-width: 700px) {
+  .favorites {
+    min-height: calc(100vh - var(--topbar-h, 0px));
+    min-height: calc(100svh - var(--topbar-h, 0px));
+    justify-content: center;
+    padding-bottom: clamp(1.5rem, 4vw, 3rem);
+  }
+}
+
+/* Phones: WIT Studio's phone version — no hold. The panels above and
+   below leave just a 16:9 window (the video's own shape at the screen's
+   width) between them, and the video is pinned full-screen behind the
+   page for the whole time that window is on screen, so the window slides
+   up past a still video. Both overlaps are a full screen, so the pinned
+   panel starts before the window scrolls in from the bottom and lets go
+   only after it has left the top: there's never an edge to see. */
+@media (max-width: 700px) {
+  .video-banner {
+    --vb-panel: 100vh;
+    --vb-panel: 100lvh;
+    height: calc(var(--vb-panel) * 2 + 56.25vw);
+    margin-top: calc(var(--vb-panel) * -1);
+    margin-bottom: calc(var(--vb-panel) * -1);
+  }
+}
+
 /* ===== Preview Sections (Anime / Character / Music / Game) ===== */
 /* One shared measurement drives both the horizontal purple gutter beside
    each flush panel and the vertical purple gap between stacked panels, so
@@ -797,9 +940,10 @@ h2 {
   z-index: 2;
   width: calc(100% + 2px);
   margin-left: -1px;
-}
-
-.anime-section {
+  /* Anime's rounded top, over the video. The sparkle dots are painted
+     here, once, behind all four sections (not per section): restarting
+     the pattern at each section's top sliced dots in half where one
+     section met the next, and left a hairline seam between them. */
   border-radius: 20px 20px 0 0;
 }
 
@@ -883,7 +1027,9 @@ h2 {
   display: inline-block;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
 }
 
 .section-header.revealed h2 .letter {
@@ -903,14 +1049,68 @@ h2 {
   margin: -1rem -1.5rem -0.25rem;
 }
 
-/* Game is the mirror image of Anime (flush left instead of right), but the
-   correction isn't symmetric: the bleed margin shifts the track the same
-   direction regardless of which side the panel is flush to, so for Anime
-   it happens to cancel most of the panel's own off-center offset, while
-   for Game it compounds it instead — measured ~66px off true center
-   without this. */
+/* Game used to get a special lopsided padding-left here to force it to the
+   true center of the viewport (flush-left panels land off-center under the
+   shared .preview-window rule below in a way flush-right ones don't) — but
+   that lopsidedness was exactly what made a card sliding out the left edge
+   vanish abruptly while the right edge let a sliver of the next card peek
+   through. Removed so Game just uses the same plain symmetric rule Anime
+   does: same gap from its panel's edge, same card size, same drag feel,
+   mirrored left-for-right since it's flush on the opposite side. Trade-off
+   (chosen deliberately): the row may sit slightly off the viewport's true
+   center rather than dead-on.
+
+   Measured result of that shared rule: Anime ends up with a 64px gap
+   panel-edge-to-card on its left and 112px on its right (an LTR quirk of
+   the width:100%-plus-both-margins box math above, not anything either
+   section's own rule controls directly). To make Game a genuine mirror
+   rather than an identical copy, it needs those two numbers on the
+   opposite sides — 112px on the left, 64px on the right.
+
+   That resting position (112 / 64) is one concern; how much *invisible*
+   room sits beyond it before overflow:hidden actually clips something is
+   a separate one — padding controls both at once, which is why splitting
+   the needed offset between margin and padding (instead of dumping it
+   all into padding, or all into margin) matters here:
+     - margin shifts the box itself, so it moves the resting position
+       without adding any clip buffer.
+     - padding pushes the *content* in from the box's own edges, so it
+       adds clip buffer AND moves the resting position by the same
+       amount.
+   Splitting each side's total between them keeps the resting position
+   fixed while choosing the buffer independently: right needed more
+   buffer (0px wasn't enough headroom for .preview-card:hover's
+   scale(1.07) rotate(-2deg) — that grows a 331px-wide card by roughly
+   12px per side before the rotation adds a few more, so Stellar Blade's
+   hover was clipping straight into the panel edge with nothing to grow
+   into) and left needed less (48px was enough headroom that a card
+   sliding out that side stayed visible well past where it should already
+   have been covered). Both now get the same 24px — enough for the hover
+   effect, tight enough that an exiting card is covered promptly:
+     - right (needs +24px more buffer than before, resting position
+       unchanged at 64 = panel's 64px padding + 0 net from margin+padding
+       here): margin-right -24px, padding-right 24px (-24 + 24 = 0, same
+       net as before).
+     - left (needs -24px less buffer than before, resting position
+       unchanged at 112 = panel's 64px padding + 48px net from margin+
+       padding here): margin-left 24px, padding-left 24px (24 + 24 = 48,
+       same net as before).
+   width:auto (overriding the shared rule's width:100%) is what makes
+   this safe to do at all — with width and both margins specified,
+   width:100% would leave the box over-constrained, and the CSS spec's
+   fixed tie-break for that (in LTR, margin-right's specified value gets
+   silently ignored and recalculated) is exactly the quirk that produced
+   the uneven 64/112 split in the first place. width:auto instead treats
+   width as the one free variable, solved from the two margins actually
+   given — both are honored exactly as written, and the box still comes
+   out 1090px wide (matching what 100% resolved to before) since the two
+   new margins offset each other by design. */
 .game-section .preview-window {
-  padding-left: calc(4.5rem + var(--panel-gutter));
+  width: auto;
+  margin-left: 24px;
+  margin-right: -24px;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .preview-track {
@@ -939,6 +1139,12 @@ h2 {
   pointer-events: none;
 }
 
+/* copies of the cards that let phones swipe round in a loop
+   (js/main.js); desktop uses the slider instead */
+.preview-track .loop-clone {
+  display: none;
+}
+
 .preview-item {
   flex: 0 0 calc((100% - 2 * clamp(0.75rem, 2vw, 1.5rem)) / 3);
   min-width: 0;
@@ -949,7 +1155,9 @@ h2 {
 
 .preview-card {
   aspect-ratio: 16 / 9;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
   will-change: transform;
 }
 
@@ -1024,7 +1232,7 @@ h2 {
   left: 0;
   height: 100%;
   border-radius: 999px;
-  background: var(--gradient);
+  background: var(--accent);
   cursor: grab;
 }
 
@@ -1044,7 +1252,10 @@ h2 {
   font-weight: 600;
   font-size: 0.85rem;
   white-space: nowrap;
-  transition: background 0.25s ease, gap 0.25s ease, transform 0.25s ease;
+  transition:
+    background 0.25s ease,
+    gap 0.25s ease,
+    transform 0.25s ease;
 }
 
 .more-pill:hover {
@@ -1202,7 +1413,10 @@ h2 {
   position: relative;
   z-index: 2;
   margin-top: 0.5rem;
-  min-height: 2.4em;
+  /* artist names only (no "Re:ZERO Music ft. …"), kept on one line —
+     "MYTH & ROID" ran a little wider than its 90px icon on phones and
+     wrapped */
+  white-space: nowrap;
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.2;
@@ -1268,7 +1482,12 @@ h2 {
   letter-spacing: 0.02em;
   color: var(--text);
   padding: 0.4em 1.4em 0.4em 1em;
-  background: linear-gradient(90deg, rgba(207, 194, 255, 1) 0%, rgba(207, 194, 255, 1) 60%, rgba(207, 194, 255, 0) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(207, 194, 255, 1) 0%,
+    rgba(207, 194, 255, 1) 60%,
+    rgba(207, 194, 255, 0) 100%
+  );
   opacity: 0;
 }
 
@@ -1321,6 +1540,13 @@ h2 {
 
 .char-select-item.active .char-name {
   color: var(--accent);
+}
+
+/* Artist names on one line ("MYTH & ROID", "Rie Takahashi" wrapped onto
+   two under the 90px icons on phones) — the name just runs a little wider
+   than its icon, still centered under it. */
+.music-page .char-select-item .char-name {
+  white-space: nowrap;
 }
 
 /* Soft glow behind the character art — shares the media's grid cell (same
@@ -1391,8 +1617,14 @@ h2 {
    height. Fixing height instead keeps every character the same size on the
    page regardless of how its source file happens to be cropped. */
 .character-detail-media.cutout {
-  width: auto;
-  height: clamp(320px, 46vw, 520px);
+  /* width worked out from the height and the image's own ratio (--ar,
+     set inline by js/character-page.js) rather than left to aspect-ratio
+     with width: auto — iPhone Safari could size that box differently in
+     this grid, and the effects (Emilia's crystal and axe) are placed as
+     percentages of it, so they ended up in the wrong spots there. */
+  --cutout-h: clamp(320px, 46vw, 520px);
+  width: calc(var(--cutout-h) * var(--ar, 3 / 4));
+  height: var(--cutout-h);
   border-radius: 0;
   outline: none;
   box-shadow: none;
@@ -1423,7 +1655,13 @@ h2 {
 .character-detail-media .character-effect-img {
   position: absolute;
   height: auto;
-  transform: translate(-50%, -50%);
+  /* centred on its left/top spot with the translate property, kept apart
+     from the float animation below (which only moves it up and down):
+     iPhone Safari works out a % translate inside a running animation once,
+     when it starts — on a fresh page load that's before the picture has
+     loaded (0×0), so the crystal and axe sat off their spots until the
+     panel was redrawn (switching character or language) */
+  translate: -50% -50%;
   pointer-events: none;
   z-index: 2;
   filter: drop-shadow(0 6px 16px rgba(80, 140, 255, 0.45));
@@ -1433,10 +1671,10 @@ h2 {
 @keyframes character-effect-float {
   0%,
   100% {
-    transform: translate(-50%, -50%) translateY(0);
+    transform: translateY(0);
   }
   50% {
-    transform: translate(-50%, -50%) translateY(-10px);
+    transform: translateY(-10px);
   }
 }
 
@@ -1458,22 +1696,22 @@ h2 {
 }
 
 /* Two columns, filled in source order — Name/CV, Age/Birthday, then
-   Height/Weight. */
+   Height/Voice. */
 /* Content-sized columns (not repeat(2, 1fr), which split the info column
    50/50 regardless of how short the actual label/value text is) — that
    left a wide gap of empty leftover space between e.g. "Emilia" and "CV:"
    on top of the explicit column-gap. Sizing each column to its own
-   content instead puts CV/Height/Weight right up against Name/Age/
+   content instead puts CV/Height/Voice right up against Name/Age/
    Birthday, with just the gap between them. */
 .character-stat-grid {
   display: grid;
   /* Column 1 (Name/Age/Birthday) is a fixed width instead of max-content,
-     so column 2 (CV/Height/Weight) always starts at the same x position
+     so column 2 (CV/Height/Voice) always starts at the same x position
      regardless of how long a given character's birthday text is. 13rem
      comfortably fits the longest line seen so far ("Birthday: September
      23" at ~11.5rem) with room to spare. Column 2 stays max-content since
-     its own values (e.g. Ram's sentence-length weight) are allowed to run
-     wider without affecting column 1's position. */
+     its own values are allowed to run wider without affecting column 1's
+     position. */
   grid-template-columns: 13rem max-content;
   column-gap: 2.5rem;
   row-gap: 0.5rem;
@@ -1489,6 +1727,31 @@ h2 {
   color: var(--text);
 }
 
+.voice-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.voice-play-btn:hover {
+  background: var(--accent-dark);
+}
+
+.voice-play-btn:active {
+  transform: scale(0.9);
+}
+
 /* Narrower than the full info column (was 40em, stretching lines all the
    way past where the compact stat grid above them ends) — shorter lines
    read as a tidier block that doesn't run further right than the rest of
@@ -1501,9 +1764,12 @@ h2 {
 }
 
 @media (max-width: 700px) {
+  /* overflow-x: effect images (e.g. Emilia's ice axe) may hang past the
+     art; trim them at the screen edge instead of widening the page */
   .character-detail {
     grid-template-columns: 1fr;
     text-align: center;
+    overflow-x: clip;
   }
 
   .character-detail-media {
@@ -1520,6 +1786,124 @@ h2 {
 
   .character-stat-grid {
     justify-content: center;
+    /* both columns sized to their text, tighter gap, so the two columns
+       fit a phone's width instead of running off the right edge */
+    grid-template-columns: max-content max-content;
+    column-gap: 1.25rem;
+    font-size: 0.9rem;
+    /* the block as a whole is centered, but inside it each column lines
+       up on the left like the desktop's (Name / Age / Birthday, then CV /
+       Height / Voice), instead of every line centered on its own */
+    text-align: left;
+  }
+
+  /* Centred on the character's face, not the picture's box: --head-x
+     (headX in characters.js, % across the art) is slid to the box's
+     middle, and the box sits in the middle of the screen. Replaces the
+     per-character desktop offsetX/offsetY/scale (inline transform, tuned
+     for the two-column layout), which would push the art off-centre. */
+  .character-detail-media.cutout {
+    transform: translateX(calc(50% - var(--head-x, 50%))) !important;
+  }
+
+  .character-detail-media.cutout[data-id="zero-two"] {
+    /* zerotwo.png is 290×660 with transparent padding; imageAspect
+       (193 / 625) is just her visible pixels, which squeezed the whole
+       padded file into a narrow box and left her ~225px tall. Use the real
+       file shape and size it so her visible figure is ~320px tall like the
+       others (625 visible px → ~2 image px per screen px, so still crisp). */
+    aspect-ratio: 290 / 660 !important;
+    --ar: 290 / 660 !important;
+    --cutout-h: 338px;
+  }
+
+  /* Emilia's ice axe, closer in and a little smaller: centred on her face
+     the art moves right, and the axe's desktop spot (112% across, 75%
+     wide) ran past the screen's right edge */
+  .character-detail-media.cutout[data-id="emilia"] .character-effect-img[src*="axe"] {
+    left: 100% !important;
+    width: 62% !important;
+  }
+
+  /* Page title (Anime / Character / Music / Game): 8px here + the hero's
+     own 8px bottom padding = 16px from the title down to the first panel,
+     matching the 16px from the top bar down to the title. */
+  .character-hero + .char-select,
+  .character-hero + .anime-detail {
+    padding-top: 8px;
+  }
+
+  /* Picker panel (characters / artists): edge to edge. */
+  .char-select {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .char-select-track {
+    width: 100%;
+    border-radius: 28px;
+    padding: 1.25rem 5vw;
+  }
+
+  /* Character page only (music.html reuses .char-select for its artist
+     picker): icons laid out as an X — four corners + one in the middle.
+     Each icon spans two half-rows, so the middle one sits between the top
+     and bottom pairs. */
+  .character-page:not(.music-page) .char-select-track {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    grid-template-rows: repeat(4, auto);
+    justify-content: space-between;
+    gap: 0.8rem 0;
+  }
+
+  .character-page:not(.music-page) .char-select-item {
+    width: clamp(90px, 27vw, 130px);
+  }
+
+  .char-select-item[data-id="ram"] {
+    grid-area: 1 / 1 / 3 / 2;
+  } /* top left */
+  .char-select-item[data-id="zero-two"] {
+    grid-area: 1 / 3 / 3 / 4;
+  } /* top right */
+  .char-select-item[data-id="emilia"] {
+    grid-area: 2 / 2 / 4 / 3;
+  } /* middle */
+  .char-select-item[data-id="rimuru"] {
+    grid-area: 3 / 1 / 5 / 2;
+  } /* bottom left */
+  .char-select-item[data-id="frieren"] {
+    grid-area: 3 / 3 / 5 / 4;
+  } /* bottom right */
+
+  /* Music's artists: a tidy 2×2 (the full-width panel would otherwise fit
+     3 + a lone 4th) */
+  .music-page .char-select-track {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: space-evenly;
+  }
+
+  /* the same 16px as title → artist panel down to the song list (or to
+     the player, and from the player to the list, while it's open) */
+  .music-page .char-select {
+    padding-bottom: 16px;
+  }
+
+  .music-page .music-stage.is-open .music-stage-inner {
+    padding-bottom: 16px;
+  }
+
+  /* The other panels edge to edge too (same full-bleed breakout as
+     .anime-hero-panel): Anime's summary, Game's team, Music's song list.
+     "main" for specificity — their base rules come later in this file. */
+  main .anime-summary-panel,
+  main .team-panel,
+  .music-page .song-panel {
+    width: calc(100vw + 2px);
+    max-width: none;
+    margin-left: calc(-50vw + 50% - 1px);
   }
 }
 
@@ -1641,6 +2025,7 @@ h2 {
    actual "fit within the cover's height, else fill the column" math is
    done in JS instead, in real pixels. */
 .anime-video-slot {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 1rem;
@@ -1653,6 +2038,131 @@ h2 {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Fullscreen (the native controls' expand button): the whole video with
+   black bars, like YouTube — "cover" above would crop it to the screen's
+   shape, a zoomed-in strip on a phone held upright */
+.anime-preview-video:fullscreen {
+  object-fit: contain;
+  background: #000;
+}
+
+.anime-preview-video:-webkit-full-screen {
+  object-fit: contain;
+  background: #000;
+}
+
+/* the same, set by js/anime-page.js on fullscreenchange — a backup for
+   browsers whose own fullscreen styling wins over the pseudo-class rules */
+.anime-preview-video.is-fullscreen {
+  object-fit: contain !important;
+  background: #000 !important;
+}
+
+/* Over the slot while the video plays in its picture-in-picture window
+   (js/anime-page.js): the anime's landscape carousel picture, whole, on
+   black. Above the video, below the play button. */
+.anime-video-pip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.anime-video-pip[hidden] {
+  display: none;
+}
+
+/* Stands in for the native play control until playback actually starts
+   (see js/anime-page.js) — a dark scrim over the full poster plus a
+   centered circle, rather than a small button in a corner, so the whole
+   preview reads as "click to play" the way the WitStudio-style reference
+   this was modeled on does. */
+.anime-video-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  margin: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  z-index: 2;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.anime-video-play.is-hidden {
+  display: none;
+}
+
+/* Invisible tap/click-to-pause layer over the playing video's picture
+   (js/anime-page.js), stopping short of the native control bar along the
+   bottom so the scrubber, volume and fullscreen buttons stay usable */
+.anime-video-tap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 56px;
+  z-index: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.anime-video-tap[hidden] {
+  display: none;
+}
+
+.anime-video-play-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  border: 6.5px solid rgba(255, 255, 255, 0.9);
+  /* No background of its own on purpose — matches the WitStudio reference:
+     the ring is transparent, so whatever the scrim above is doing to the
+     video shows straight through the circle instead of the circle reading
+     as a separately-shaded patch. */
+  color: #fff;
+}
+
+.anime-video-play-icon svg {
+  /* Optical centering: a play triangle's own visual weight sits left of
+     its bounding box's true center, reading as "off-center" inside a
+     perfectly centered circle without this nudge. */
+  transform: translateX(2px);
+}
+
+/* Scoped to real hover-capable pointers (mice/trackpads) — on a touch
+   device ":hover" would otherwise get stuck "on" after a tap, since
+   there's no mouse to leave the element and clear it. Matches the same
+   guard the WitStudio reference uses for the same reason. */
+@media (any-hover: hover) {
+  .anime-video-play {
+    transition: background 0.4s;
+  }
+
+  .anime-video-play-icon {
+    transition: transform 0.4s;
+  }
+
+  .anime-video-play:hover {
+    background: rgba(38, 38, 38, 0.3);
+  }
+
+  .anime-video-play:hover .anime-video-play-icon {
+    transform: scale(0.9);
+  }
 }
 
 /* Shown instead of the <video> until a real clip is added in
@@ -1695,7 +2205,9 @@ h2 {
   opacity: 0;
   transform: translateY(36px);
   /* Was 1s, then 1.8s — slower again (2s) per request. */
-  transition: opacity 2s ease 0.1s, transform 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+  transition:
+    opacity 2s ease 0.1s,
+    transform 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
 }
 
 .anime-summary-heading.revealed {
@@ -1703,18 +2215,29 @@ h2 {
   transform: translateY(0);
 }
 
-/* Bottom corners square (not rounded) — this is the last panel on the
-   page (see .anime-detail's own padding-bottom: 0 below), so it runs
-   flush to the true end of the page instead of leaving a strip of the
-   sparkle background showing beneath it, the same reasoning
-   .game-section's own bottom corners use on the home page. */
+/* Styled like games.html's Team panel: 80% of the window's width,
+   centred, fully rounded, with a polka-dot gap below it (#animeDetail's
+   bottom padding) so it stays separate from the anime drawer that embeds
+   underneath (see .drawer-separate, set on anime.html's drawer). */
 .anime-summary-panel {
-  width: calc(100vw + 2px);
-  margin-left: calc(-50vw + 50% - 1px);
+  width: 80vw;
+  margin-left: calc(50% - 40vw);
   background: var(--bg);
-  border-radius: 1.5rem 1.5rem 0 0;
+  border-radius: 1.5rem;
   box-shadow: var(--frame-shadow);
   padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+}
+
+/* The break between the summary panel and the drawer. Padding, not a
+   margin on the panel: a bottom margin on the page's last element
+   collapses out through <main> onto the plain white <body>, losing the
+   polka dots. Equal to the whole gap between the hero (video) panel and
+   this panel above it — the hero panel's margin-bottom, the "Summary"
+   heading's line box (font-size x line-height 1.5) and its margin-bottom
+   — so the summary panel sits evenly between the two panels at any
+   screen size. */
+#animeDetail {
+  padding-bottom: calc(2 * clamp(1.5rem, 3vw, 2.5rem) + clamp(1.3rem, 3vw, 1.75rem) * 1.5);
 }
 
 .anime-summary-inner {
@@ -1737,6 +2260,781 @@ h2 {
   max-width: 40em;
   margin: 0 auto;
   text-align: left;
+}
+
+/* anime.html only (games.html reuses .anime-summary without the reveal):
+   the paragraph rises in from below the same way .anime-summary-heading
+   does, via .revealed from js/anime-page.js's IntersectionObserver */
+#animeDetail .anime-summary {
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity 2s ease 0.1s,
+    transform 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+}
+
+#animeDetail .anime-summary.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Game Detail Page (games.html) ===== */
+/* Reuses anime.html's full-bleed white panel (.anime-hero-panel) and its
+   Summary heading/panel — only the inside differs: a centered title on
+   top, then the 16:9 key art centered below it. */
+.game-hero-inner {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 1.1rem;
+}
+
+/* Source images are all 1920x1080, so a true 16:9 box shows them whole —
+   object-fit: cover is just a safety net for any future off-ratio image. */
+/* 60% of the window's width (not of the panel) so it stays the same share
+   of the screen at any size; below 700px it goes back to the full column
+   (see the media query below), since 60vw on a phone is too small to see. */
+.game-shot {
+  width: 60vw;
+  aspect-ratio: 16 / 9;
+  /* A touch rounder than the drawer thumbnails' 0.75rem, since this frame
+     is much bigger. overflow: hidden clips the image to the curve. */
+  border-radius: 1rem;
+  overflow: hidden;
+  outline: 1.5px solid rgba(0, 0, 0, 0.12);
+  outline-offset: -1.5px;
+  box-shadow: var(--frame-shadow);
+  background: var(--placeholder-bg);
+}
+
+.game-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Title, image and summary all share this one panel, so it's the last
+   thing on the page — square bottom corners and no bottom margin so it
+   runs flush to the end, same as anime.html's .anime-summary-panel. */
+.game-panel {
+  border-radius: 1.5rem 1.5rem 0 0;
+  margin-bottom: 0;
+}
+
+.game-summary {
+  margin-top: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+/* A game with a Team block: the panel is no longer the last thing on the
+   page, so it gets its normal rounded bottom corners and gap back, and the
+   Team block sits below it on the polka-dot background */
+.game-panel--has-team {
+  border-radius: 1.5rem;
+  margin-bottom: 0;
+}
+
+/* ===== Game "Team" block (games.html, only for games with a `team`) =====
+   Modelled on Blue Archive's official Student List. Left column: the
+   selected unit's big portrait with its profile to the right, and the
+   icon grid underneath (starting at the same left edge as the portrait).
+   Right column: the full-body art, no frame, blending into the white
+   .team-panel. 81x81 list icons (cropped square from the bottom of the 404x456
+   portraits) and a 146x165 big portrait. */
+/* The polka-dot gaps above and below the "Team" heading are the same
+   size, so the heading sits evenly between the two panels */
+.team {
+  --team-gap: clamp(1.5rem, 3vw, 2.5rem);
+  max-width: 940px;
+  margin: 0 auto;
+  padding-top: var(--team-gap);
+  /* The break between the team panel and the game drawer, equal to the
+     whole break above the team panel (this padding-top, the "Team"
+     heading's line box — font-size x line-height 1.5 — and its
+     margin-bottom) so the panel sits evenly between the two at any screen
+     size. Padding, not a margin on .team-panel: a bottom margin on the
+     page's last element collapses out through .anime-detail and <main>,
+     landing on the plain white <body> instead of the polka dots. */
+  padding-bottom: calc(2 * var(--team-gap) + clamp(1.25rem, 2.4vw, 1.6rem) * 1.5);
+}
+
+/* White panel behind the portrait/icons/full-body art (the "Team" heading
+   stays above it on the polka dots). Same padding as the other panels
+   but 80% wide instead of full-bleed; fully rounded, with .team's bottom padding leaving
+   a polka-dot gap so it stays separate from the game drawer that embeds
+   underneath (see .drawer-separate). */
+.team-panel {
+  /* 80% of the window's width, centred */
+  width: 80vw;
+  margin-left: calc(50% - 40vw);
+  position: relative;
+  /* keeps the full-body art's slide-in inside
+     the panel, so the page never briefly scrolls sideways on phones */
+  overflow: clip;
+  background: var(--bg);
+  border-radius: 1.5rem;
+  box-shadow: var(--frame-shadow);
+  padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+  --team-decor-inset: clamp(0.75rem, 1.5vw, 1.25rem);
+  /* the space above the school name = the space between it and the
+     portrait below, so the name sits evenly between the two */
+  --team-title-gap: 0.875rem;
+  /* the font leaves extra room under capital letters (space for g/y
+     tails), so the name is nudged down by this much to make the visible
+     gap above and below it equal */
+  --team-title-nudge: 3.1px;
+  /* the corner triangles are as wide as one small icon */
+  --team-tri-w: 81px;
+  padding-top: calc(var(--team-title-gap) + var(--team-title-nudge));
+  /* same as the top, to keep the panel compact; the bottom-left triangle
+     sits in the empty first slot of the icons' second row */
+  padding-bottom: var(--team-title-gap);
+}
+
+/* ----- Panel decoration (Blue Archive "HUD" style) ----- */
+/* The selected unit's school emblem as a faint grey watermark near the
+   top of the panel, behind everything else (like the emblem on Blue Archive's own
+   student frame). The navy source logos are turned light grey with a
+   filter, so the image files themselves stay untouched. */
+.team-logo {
+  position: absolute;
+  z-index: 0;
+  /* centred left to right near the top: its top edge 5% down the panel
+     (i.e. 95% of the way up). Auto side margins rather than a transform,
+     since .team-loaded resets transforms for the fade-in. */
+  top: 5%;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  /* a fixed box the trimmed logos (no empty edges) are fitted into,
+     top-aligned, so every school's logo starts at the same height */
+  width: 135px;
+  aspect-ratio: 688 / 624;
+  object-fit: contain;
+  object-position: top center;
+  filter: brightness(0) invert(92%);
+  pointer-events: none;
+}
+
+/* everything in the panel sits above the watermark */
+.team-stage {
+  position: relative;
+  z-index: 1;
+}
+
+/* Blue Archive's split triangle (see TEAM_DECOR in js/game-page.js):
+   hanging from the top edge top-right, standing on the bottom edge
+   bottom-left, with three purple tints and a hollow middle */
+.team-tri {
+  position: absolute;
+  width: var(--team-tri-w);
+  height: calc(var(--team-tri-w) * 0.866);
+  pointer-events: none;
+}
+
+.team-tri--tr {
+  top: 0;
+  right: var(--team-edge, calc(var(--team-decor-inset) + 6px));
+}
+
+/* --team-edge (set by js/game-page.js) = how far the left column starts
+   from the panel's left edge; the top-right triangle uses the same
+   distance from the right edge, so the two mirror each other */
+.team-tri--bl {
+  bottom: 0;
+  left: var(--team-edge, calc(var(--team-decor-inset) + 6px));
+}
+
+.team-tri-light {
+  fill: #e4e0fb;
+}
+
+.team-tri-mid {
+  fill: #cdc6f8;
+}
+
+.team-tri-dark {
+  fill: #a99ff3;
+}
+
+/* The selected unit's school sits at the top of the left column (so it
+   starts on the same line as the portrait, ruler and icons) and fades with
+   the rest of the profile when switching (see .team-loaded below); the
+   barcode sits in the bottom-right corner */
+.team-school {
+  margin-bottom: calc(var(--team-title-gap) - var(--team-title-nudge));
+  line-height: 1;
+  /* same size as the unit's name (.team-name) */
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: #000;
+  white-space: nowrap;
+}
+
+.team-barcode {
+  position: absolute;
+  bottom: 12px;
+  /* right edge in line with the top-right triangle's (see --team-edge) */
+  right: var(--team-edge, calc(var(--team-decor-inset) + 6px));
+  width: 146px;
+  height: 26px;
+  fill: var(--accent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Same bottom-to-top reveal as anime.html's .anime-summary-heading:
+   .revealed is added by an IntersectionObserver in js/game-page.js the
+   first time the heading scrolls into view */
+.team-heading {
+  text-align: center;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: var(--team-gap);
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity 2s ease 0.1s,
+    transform 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+}
+
+.team-heading.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Both columns sized to their content and the pair centred as a group,
+   so the portrait/icons and the full-body art sit together in the middle
+   of the panel instead of hugging opposite edges */
+.team-stage {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;
+  margin: 0 auto;
+}
+
+/* Above the full-body art, so the icon grid may overlap it if space is
+   tight */
+.team-main {
+  position: relative;
+  z-index: 1;
+  /* icon size + gap, shared by the icon grid and the ruler under it */
+  --team-icon: 81px;
+  --team-icon-gap: 29px;
+}
+
+.team-profile {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.team-portrait {
+  flex: 0 0 auto;
+  width: 146px;
+  filter: drop-shadow(0 8px 16px rgba(40, 80, 140, 0.18));
+}
+
+.team-portrait img {
+  width: 100%;
+  display: block;
+}
+
+/* Same size as the page's .game-title so it doesn't outrank the game name */
+.team-name {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+/* Stat rows reuse character.html's .character-stat classes (16px, bold
+   label + regular value); only the spacing between rows is set here.
+   Always one line each, even for long academy names like "Millennium
+   Science School" (the layout below makes room for it). */
+.team-info .character-stat {
+  white-space: nowrap;
+}
+
+/* A fixed minimum width that fits the longest line ("Academy: Millennium
+   Science School"), so the left column — and with it the whole centred
+   layout — stays the same width whichever unit is selected, instead of
+   shifting left for Millennium students and right for shorter names */
+.team-info {
+  min-width: 18rem;
+}
+
+.team-info .character-stat + .character-stat {
+  margin-top: 0.35rem;
+}
+
+/* Scaled down in step with the icons. The files are only ~600px tall, so
+   on high-DPI screens (e.g. 175% Windows scaling) they're still upscaled a
+   little — larger source files would make them sharper. */
+.team-full {
+  /* fixed width (fits the widest art, Koyuki) so the layout doesn't
+     shift sideways when switching between narrower/wider characters */
+  width: 360px;
+  max-width: 100%;
+  height: 416px;
+  /* lifts the art (it's vertically centred in its column) so its feet
+     clear the barcode in the bottom-right corner */
+  margin-bottom: 24px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.team-figure {
+  position: relative;
+  height: 100%;
+}
+
+.team-full-art {
+  position: relative;
+  z-index: 2;
+  display: block;
+  height: 100%;
+  width: auto;
+}
+
+/* Switch animation, copied from the official site: without .team-loaded
+   the portrait is faded out, the full-body art sits 88px to the right and
+   the text 200px lower. Toggling the class makes everything transition
+   out/in over 0.5s (see initTeam in js/game-page.js). */
+.team-portrait,
+.team-info,
+.team-figure,
+.team-school,
+.team-logo {
+  opacity: 0;
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+}
+
+.team-info {
+  transform: translateY(200px);
+}
+
+/* the school name slides in from the left (mirroring the full-body art,
+   which comes in from the right, by the same 88px) */
+.team-school {
+  transform: translateX(-88px);
+}
+
+.team-figure {
+  transform: translateX(88px);
+}
+
+.team-loaded .team-portrait,
+.team-loaded .team-info,
+.team-loaded .team-figure,
+.team-loaded .team-school,
+.team-loaded .team-logo {
+  opacity: 1;
+  transform: none;
+}
+
+/* Always 4 columns, left-aligned under the portrait; a short second row
+   is placed by pinning its units to columns via `col` in js/games.js. The
+   gaps leave clear space between neighbouring hover frames. */
+.team-icons {
+  display: grid;
+  grid-template-columns: repeat(4, var(--team-icon));
+  justify-content: start;
+  gap: var(--team-icon-gap);
+  /* rows a bit tighter than columns, still clearing the hover frames' ▲/▼ */
+  row-gap: 24px;
+  margin-top: 1rem;
+}
+
+/* Tick ruler between the profile and the icon grid, exactly as wide as
+   the grid */
+.team-ruler {
+  display: block;
+  width: calc(4 * var(--team-icon) + 3 * var(--team-icon-gap));
+  height: 22px;
+  margin-top: 1rem;
+  stroke: #c3bbf2;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.team-col-1 {
+  grid-column: 1;
+}
+.team-col-2 {
+  grid-column: 2;
+}
+.team-col-3 {
+  grid-column: 3;
+}
+.team-col-4 {
+  grid-column: 4;
+}
+
+.team-icon {
+  position: relative;
+  width: var(--team-icon);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Square crop: keep the top of the portrait and drop the extra height
+   from the bottom. The files' own corners are 45-degree cuts (18px on the
+   404px file = 4.5%), so the crop's bottom corners are cut the same way
+   with clip-path to match. */
+.team-icon > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: top;
+  clip-path: polygon(
+    4.5% 0,
+    95.5% 0,
+    100% 4.5%,
+    100% 95.5%,
+    95.5% 100%,
+    4.5% 100%,
+    0 95.5%,
+    0 4.5%
+  );
+}
+
+/* Same technique as the official site: the frame scales up from the
+   centre and fades in over 0.5s on hover, and stays on the selected icon.
+   Position/size are the SVG's padded viewBox (-60 -60 524 524) expressed
+   as percentages of the square 404x404 icon. */
+.team-frame {
+  position: absolute;
+  left: -14.85%;
+  top: -14.85%;
+  width: 129.7%;
+  height: 129.7%;
+  overflow: visible;
+  stroke: var(--accent);
+  fill: none;
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+  pointer-events: none;
+}
+
+/* Markers get a same-colour round-joined stroke so their tips are soft */
+.team-frame polygon {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 14;
+  stroke-linejoin: round;
+}
+
+.team-icon:hover .team-frame,
+.team-icon:focus-visible .team-frame,
+.team-icon.active .team-frame {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Medium widths: slimmer side padding, a smaller gap and a more compact
+   full-body area, so both columns (with the one-line academy name) still
+   fit side by side inside the 80% panel down to ~1080px */
+@media (max-width: 1240px) {
+  .team-panel {
+    padding-left: 3vw;
+    padding-right: 3vw;
+  }
+
+  .team-stage {
+    gap: 2rem;
+  }
+
+  .team-full {
+    width: 300px;
+    height: 360px;
+  }
+}
+
+/* Not enough width for both columns: stack the full-body art under the
+   portrait + icons, all centred */
+@media (max-width: 1080px) {
+  .team-stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+@media (max-width: 700px) {
+  /* centred on phones, so no fixed width needed (and 18rem would be wider
+     than a phone-width panel) */
+  .team-info {
+    min-width: 0;
+  }
+
+  .team-panel {
+    --team-title-gap: 0.85rem;
+    --team-title-nudge: 0.5px;
+    --team-tri-w: 52px;
+    /* room for the bottom-left triangle and the barcode row so neither
+       sits on the full-body art */
+    padding-bottom: calc(var(--team-tri-w) * 0.866 + 0.75rem);
+  }
+
+  .team-logo {
+    width: 95px;
+  }
+
+  /* Two columns on phones: school name, portrait and info on the left,
+     the full-body art on the right; the ruler and icon row run across the
+     bottom. .team-main / .team-profile step out of the way (display:
+     contents) so their parts can sit in the stage grid directly — the
+     --team-icon sizes still inherit through them. */
+  .team-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "school  full"
+      "profile full"
+      "ruler   ruler"
+      "icons   icons";
+    justify-items: stretch;
+    align-items: start;
+    column-gap: 0.75rem;
+    row-gap: 0;
+  }
+
+  .team-main {
+    display: contents;
+    --team-icon: 52px;
+    --team-icon-gap: 20px;
+  }
+
+  /* left half: everything centred within it, and above the art in case a
+     wide pose reaches across the gap */
+  .team-school,
+  .team-profile {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+  }
+
+  .team-school {
+    grid-area: school;
+    align-self: end;
+    font-size: 1.15rem;
+    /* the letter-spacing trails after the last letter; balance it */
+    padding-left: 0.4em;
+  }
+
+  .team-profile {
+    grid-area: profile;
+    flex-direction: column;
+    align-items: center;
+    align-self: center;
+    gap: 0.6rem;
+  }
+
+  .team-portrait {
+    width: 104px;
+  }
+
+  .team-name {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+  }
+
+  /* narrow column: smaller, and long values (e.g. "Millennium Science
+     School") may wrap */
+  .team-info .character-stat {
+    font-size: 0.8rem;
+    white-space: normal;
+  }
+
+  /* Every figure at the same fixed height (the art files are all 600px
+     tall with the character filling the whole image, so equal height =
+     equal size). Not squeezed to the column's width — that's what made
+     wide poses come out smaller. js/game-page.js (alignBody) slides each
+     one sideways so the character's body centre lands in the middle of
+     the right half. */
+  .team-full {
+    grid-area: full;
+    width: 100%;
+    height: 260px;
+    margin-bottom: 0;
+    align-self: center;
+  }
+
+  /* natural width at that height (never squeezed to the column — a wide
+     pose may reach a little past it, sideways only) */
+  .team-figure {
+    flex-shrink: 0;
+  }
+
+  .team-full-art {
+    max-width: none;
+  }
+
+  /* 80% of the (full-width) panel, centred; its ticks are placed in %, so
+     they spread out evenly with it */
+  .team-ruler {
+    grid-area: ruler;
+    margin-top: 1.25rem;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80vw;
+    justify-self: center;
+  }
+
+  /* barcode smaller and centred along the bottom edge (was bottom-right) */
+  .team-barcode {
+    width: 120px;
+    height: 22px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .team-icons {
+    grid-area: icons;
+    justify-content: center;
+    row-gap: 24px;
+  }
+}
+
+/* Phones, "mini" version (.team-mini, set by js/game-page.js — TEAM_MINI):
+   instead of the phone layout above, the desktop layout exactly as a
+   ~1100px-wide screen shows it, laid out at a fixed 880px and zoomed down
+   to the phone's width. Every phone override above is put back to its
+   desktop value here. */
+@media (max-width: 700px) {
+  .team-panel.team-mini {
+    width: 880px;
+    max-width: none;
+    margin-left: 0;
+    padding: calc(0.875rem + 3.1px) 33px 0.875rem;
+    --team-decor-inset: 16.5px;
+    --team-title-gap: 0.875rem;
+    --team-title-nudge: 3.1px;
+    --team-tri-w: 81px;
+  }
+
+  .team-mini .team-stage {
+    grid-template-columns: auto auto;
+    grid-template-areas: none;
+    justify-content: center;
+    justify-items: normal;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .team-mini .team-main {
+    display: block;
+    --team-icon: 81px;
+    --team-icon-gap: 29px;
+  }
+
+  .team-mini .team-school,
+  .team-mini .team-profile {
+    grid-area: auto;
+    align-self: auto;
+    position: static;
+    text-align: left;
+  }
+
+  .team-mini .team-school {
+    padding-left: 0;
+    font-size: 2rem;
+  }
+
+  .team-mini .team-profile {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.75rem;
+  }
+
+  .team-mini .team-portrait {
+    width: 146px;
+  }
+
+  .team-mini .team-name {
+    text-align: left;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .team-mini .team-info {
+    min-width: 18rem;
+  }
+
+  .team-mini .team-info .character-stat {
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  .team-mini .team-full {
+    grid-area: auto;
+    align-self: auto;
+    width: 300px;
+    height: 360px;
+    margin-bottom: 24px;
+  }
+
+  .team-mini .team-ruler {
+    grid-area: auto;
+    justify-self: auto;
+    width: calc(4 * var(--team-icon) + 3 * var(--team-icon-gap));
+    margin: 1rem 0 0;
+  }
+
+  .team-mini .team-icons {
+    grid-area: auto;
+    justify-content: start;
+  }
+
+  .team-mini .team-barcode {
+    left: auto;
+    right: var(--team-edge, calc(var(--team-decor-inset) + 6px));
+    transform: none;
+    width: 146px;
+    height: 26px;
+  }
+
+  .team-mini .team-logo {
+    width: 135px;
+  }
+}
+
+@media (max-width: 700px) {
+  /* edge to edge, like the panel around it (same full-bleed breakout as
+     .anime-hero-panel); square corners since it meets the screen edges */
+  .game-shot {
+    width: calc(100vw + 2px);
+    max-width: none;
+    margin-left: calc(50% - 50vw - 1px);
+    margin-right: calc(50% - 50vw - 1px);
+    border-radius: 0;
+    outline: none;
+  }
 }
 
 @media (max-width: 700px) {
@@ -1765,9 +3063,1149 @@ h2 {
     text-align: center;
     padding-top: 1rem;
   }
+
+  /* Title above the cover picture: the body column steps aside (display:
+     contents) so the title, cover and video stack in one column, and the
+     title moves to the top. No 2-line reserve here (that only lines the
+     video up with the cover's bottom in the side-by-side layout). */
+  .anime-detail .anime-hero-body {
+    display: contents;
+  }
+
+  .anime-detail .anime-title {
+    order: -1;
+    width: 100%;
+    margin-bottom: 0;
+    min-height: 0;
+    text-align: center;
+  }
+
+  .anime-detail .anime-video-slot {
+    width: 100%;
+  }
+}
+
+/* ===== Game "roster" block (games.html, Genshin Impact) =====
+   Sits where the Team panel would (same "Team" heading above it). The
+   panel keeps the namecards' own 840x400 shape so the selected
+   character's namecard covers it fully without cropping; the icons sit in
+   a column down the left side, centred top to bottom. Same width cap and
+   rounding as the party panel, and the site's usual frame shadow. */
+.roster {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(80vw, 1200px);
+  margin-left: calc(50% - min(40vw, 600px));
+  aspect-ratio: 840 / 400;
+  /* never shorter than the icon column: four icons, each with its name
+     underneath (0.35rem gap + ~1.15rem line), the gaps between them and
+     the padding top and bottom. On narrow screens this wins over the
+     card's shape and the namecard is cropped at the sides instead. */
+  min-height: calc(
+    4 * (var(--roster-icon) + 1.5rem) + 3 * var(--roster-gap) + 2 * var(--roster-pad)
+  );
+  border-radius: 1.5rem;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+  box-shadow: var(--frame-shadow);
+  --roster-icon: clamp(48px, 5.2vw, 84px);
+  --roster-gap: clamp(0.4rem, 1vw, 0.9rem);
+  /* how far the hovered/selected icon lifts */
+  --roster-lift: 3px;
+  --roster-pad: clamp(1rem, 2.5vw, 2rem);
+}
+
+/* Two stacked namecard layers; js/game-page.js loads the next card into
+   the hidden one and fades it in on top (.on), while the previous card
+   stays fully visible underneath (.under) so the fade never dips to white */
+.roster-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: center / cover no-repeat;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.roster-bg.on {
+  opacity: 1;
+  z-index: 0;
+}
+
+.roster-bg.under {
+  opacity: 1;
+}
+
+/* The selected character's profile art in the bottom-right corner, its
+   flat bottom edge on the panel's bottom edge; it slides in from past the
+   panel's right edge (.up, set in js/game-page.js). Behind the icons,
+   which stay clickable on top. */
+.roster-profile {
+  position: absolute;
+  /* per-character overrides come from profileFit in js/games.js */
+  right: var(--profile-right, 0);
+  bottom: var(--profile-bottom, 0);
+  z-index: 1;
+  height: var(--profile-h, 80%);
+  width: auto;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(100%);
+  transition:
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease;
+}
+
+.roster-profile.up {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.roster-profile:not([src]) {
+  visibility: hidden;
+}
+
+/* Name + blurb, laid out after genshin.hoyoverse.com's character pages:
+   a short accent line, the name in big white capitals, then the blurb in
+   white on a half-transparent black box with a small diamond at its left.
+   In the site's own font and accent purple. It sits right of the icon
+   column in .roster-side: the line starts level with the top of the first
+   icon, and the blurb box ends where its text does (a blurb too long to
+   fit above the bottom of the last icon scrolls inside it). Above the
+   character art so it stays readable where they overlap. */
+.roster-side {
+  position: relative;
+  z-index: 2;
+}
+
+/* pinned beside the column rather than laid out next to it, so a long
+   blurb can never run past the icons; inset by the column's top/bottom
+   padding so it lines up with the icons themselves, the top raised by the
+   icon lift so the line is level with the (selected, lifted) first icon */
+.roster-info {
+  position: absolute;
+  top: calc(var(--roster-pad) - var(--roster-lift));
+  bottom: var(--roster-pad);
+  left: 100%;
+  width: min(26vw, 330px);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateX(-14px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.roster-info.shown {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* The accent line, the name under it and the character's card item to
+   their right, as one block: the card runs from the top of the line to
+   the bottom of the name. Sized in the name's font size (em), so the card
+   height can be worked out from the line, the gap and the name's line. */
+.roster-head {
+  --head-gap: clamp(0.4rem, 1vw, 0.9rem);
+  /* line (4px) + gap + the name's line box (1.1em) */
+  --head-h: calc(4px + var(--head-gap) + 1.1em);
+  flex: none;
+  display: grid;
+  /* never squeezed: with a long name the card may run past the right edge
+     of the blurb box instead */
+  grid-template-columns: max-content max-content;
+  justify-content: start;
+  column-gap: 0.3em;
+  margin-bottom: clamp(0.4rem, 1vw, 0.9rem);
+  font-size: clamp(1.35rem, 3.2vw, 2.75rem);
+}
+
+.roster-line {
+  grid-area: 1 / 1;
+  width: clamp(72px, 11vw, 180px);
+  height: 4px;
+  margin-bottom: var(--head-gap);
+  background: var(--accent);
+}
+
+.roster-title {
+  grid-area: 2 / 1;
+  margin: 0;
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* only as tall as its text; a blurb too long for the room down to the
+   last icon scrolls */
+.roster-intro {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.6rem 0.9rem 0.6rem 2.6rem;
+  background: rgba(1, 1, 1, 0.5);
+  color: #fff;
+  /* same size as the character page's bio (.character-detail-bio) */
+  font-size: 1rem;
+  line-height: 1.625;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+}
+
+/* The card item spans both rows. Its 256px-tall art has 10px of empty
+   space above the card and 7px below, so it's drawn that much taller and
+   pulled up/down by those amounts: the visible card then starts exactly
+   at the top of the line and ends at the bottom of the name. */
+.roster-item {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: start;
+  height: calc(var(--head-h) * 256 / 239);
+  /* the card item art is square */
+  width: calc(var(--head-h) * 256 / 239);
+  max-width: none;
+  margin-top: calc(var(--head-h) * -10 / 239);
+  margin-bottom: calc(var(--head-h) * -7 / 239);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.roster-item[hidden] {
+  display: none;
+}
+
+.roster-intro p + p {
+  margin-top: 0.5em;
+}
+
+/* the official site's marker (a 20x20 image there, redrawn here as SVG):
+   a white diamond outline with a smaller solid diamond inside, centred on
+   the first line of text */
+.roster-intro::before {
+  content: "";
+  position: absolute;
+  left: 0.8rem;
+  top: calc(0.6rem + (1.625em - 1.2em) / 2);
+  width: 1.2em;
+  height: 1.2em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 1.3 18.7 10 10 18.7 1.3 10Z' fill='none' stroke='white' stroke-width='2.2'/%3E%3Cpath d='M10 6 14 10 10 14 6 10Z' fill='white'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* phones: the panel is narrow, so the text takes all the room right of
+   the icons */
+@media (max-width: 640px) {
+  .roster-info {
+    /* the panel's width (80vw) minus the icon column and a right margin */
+    width: calc(80vw - 100% - var(--roster-pad));
+  }
+}
+
+.roster-icons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--roster-gap);
+  padding: var(--roster-pad);
+}
+
+/* Character icons styled like genshin.gg's character list: the portrait
+   on the orange 5★ tile with small rounded corners, the element in a navy circle hanging off the top-right corner, and the
+   name underneath. The button itself is just the column; .roster-pic is
+   the tile (clipped), so the badge can stick out past its corner. */
+.roster-icon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: var(--roster-icon);
+  /* keep all four the same size; a long name may spill a little past its
+     icon instead of squeezing it */
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.25s ease;
+}
+
+.roster-pic {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 7%;
+  overflow: hidden;
+  background: linear-gradient(160deg, #6f4a2f 0%, #a8693a 55%, #d79a4b 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  filter: saturate(0.85) brightness(0.92);
+  transition:
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.roster-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* genshin.gg's badge: 24px on a 70px icon, 3px padding, poking 5px above
+   the tile and 1px past its right edge */
+.roster-element {
+  position: absolute;
+  top: -7%;
+  right: -2%;
+  width: 34%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 4%;
+  border-radius: 50%;
+  background: #303b7a;
+}
+
+.roster-name {
+  font-size: clamp(0.75rem, 1vw, 0.875rem);
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.7),
+    0 0 8px rgba(0, 0, 0, 0.35);
+}
+
+.roster-icon:hover,
+.roster-icon:focus-visible,
+.roster-icon.active {
+  transform: translateY(calc(-1 * var(--roster-lift)));
+}
+
+.roster-icon:hover .roster-pic,
+.roster-icon:focus-visible .roster-pic {
+  filter: none;
+}
+
+.roster-icon:focus-visible {
+  outline: none;
+}
+
+.roster-icon:focus-visible .roster-pic {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.roster-icon.active .roster-pic {
+  filter: none;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    0 0 0 3px #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roster-bg,
+  .roster-profile,
+  .roster-info,
+  .roster-icon,
+  .roster-pic {
+    transition: none;
+  }
+}
+
+/* Phones: the desktop layout, just smaller. The panel is laid out at a
+   fixed 720px — every size pinned to what a ~900px-wide screen gives it
+   (the sizes above follow the screen width, which on a phone squeezed it
+   into a tall, cropped box) — and js/game-page.js (fitRoster) then zooms
+   the whole thing down to the screen's width, edge to edge. */
+@media (max-width: 700px) {
+  .roster {
+    width: 720px;
+    margin-left: 0;
+    --roster-icon: 48px;
+    --roster-gap: 9px;
+    --roster-pad: 22.5px;
+  }
+
+  .roster-info {
+    width: 234px;
+  }
+
+  .roster-head {
+    --head-gap: 9px;
+    font-size: 28.8px;
+  }
+
+  .roster-line {
+    width: 99px;
+  }
+
+  .roster-name {
+    font-size: 11px;
+  }
+}
+
+/* ===== Game "party" block (games.html, Pokémon Legends: Z-A) =====
+   Sits where the Team panel would (same "Team" heading above it). A clean
+   white panel with a faint Poké Ball pattern: the selected Pokémon on a
+   Poké Ball stand on the left with its Dex card underneath, the party as a
+   2x3 grid of cards on the right. The background, pattern, spinning Poké
+   Ball and stand are tinted with the selected Pokémon's two type colours
+   (--t1 / --t2, set in js/game-page.js). Everything inside .party is sized
+   in cqw — % of .party-wrap's width — so it scales like one picture; below
+   640px wide it stacks (showcase on top, cards below). */
+@property --t1 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7c6df0;
+}
+
+@property --t2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7c6df0;
+}
+
+.party-wrap {
+  width: min(80vw, 1200px);
+  margin-left: calc(50% - min(40vw, 600px));
+  container-type: inline-size;
+}
+
+/* Phones: the desktop layout, just smaller — laid out at the 880px it has
+   on a 1100px-wide screen (so the stacked <640px layout never kicks in)
+   and zoomed down to the screen's width by js/game-page.js (fitMini) */
+@media (max-width: 700px) {
+  .party-wrap {
+    width: 880px;
+    margin-left: 0;
+  }
+}
+
+.party {
+  --pk-ink: #17112b;
+  --pk-hp: #38e06a;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 1.6cqw;
+  overflow: hidden;
+  isolation: isolate;
+  background: #fff;
+  box-shadow:
+    0 2cqw 5cqw -1.5cqw rgba(40, 50, 90, 0.3),
+    0 0 0 1px rgba(40, 50, 90, 0.08);
+  font-family: "M PLUS Rounded 1c", system-ui, sans-serif;
+  color: var(--pk-ink);
+  user-select: none;
+  /* the type tint fades from one Pokémon's colours to the next */
+  transition:
+    --t1 0.6s ease,
+    --t2 0.6s ease;
+}
+
+/* ----- Backdrop: type-coloured glow + faint Poké Ball pattern ----- */
+.party-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.party-bg--tint {
+  background: radial-gradient(
+      70% 90% at 22% 45%,
+      color-mix(in srgb, var(--t1) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      60% 80% at 85% 70%,
+      color-mix(in srgb, var(--t2) 16%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(160deg, #fff, color-mix(in srgb, var(--t1) 5%, #fff));
+}
+
+/* the pattern is a mask, so it can take the type colour */
+.party-bg--pattern {
+  background: var(--t1);
+  opacity: 0.12;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='16' cy='16' r='9'/%3E%3Cpath d='M7 16h6M19 16h6'/%3E%3Ccircle cx='16' cy='16' r='3'/%3E%3Ccircle cx='48' cy='48' r='9'/%3E%3Cpath d='M39 48h6M51 48h6'/%3E%3Ccircle cx='48' cy='48' r='3'/%3E%3C/g%3E%3C/svg%3E")
+    0 0 / 6cqw 6cqw;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='16' cy='16' r='9'/%3E%3Cpath d='M7 16h6M19 16h6'/%3E%3Ccircle cx='16' cy='16' r='3'/%3E%3Ccircle cx='48' cy='48' r='9'/%3E%3Cpath d='M39 48h6M51 48h6'/%3E%3Ccircle cx='48' cy='48' r='3'/%3E%3C/g%3E%3C/svg%3E")
+    0 0 / 6cqw 6cqw;
+}
+
+.party-head {
+  position: absolute;
+  left: 2.4cqw;
+  top: 2cqw;
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  color: var(--pk-ink);
+}
+
+.party-ball {
+  width: 3.8cqw;
+  height: 3.8cqw;
+}
+
+.party-head h4 {
+  margin: 0;
+  font-size: 3.6cqw;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* ----- Showcase (left) ----- */
+.party-stage {
+  /* where the sprite's bottom-centre stands, as a fraction of the stage
+     (read by js/game-page.js — see .party-sprite) */
+  --party-ax: 0.5;
+  --party-ay: 0.7;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 46%;
+  z-index: -1;
+}
+
+.party-watermark {
+  position: absolute;
+  left: 50%;
+  top: 39%;
+  width: 26cqw;
+  translate: -50% -50%;
+  color: var(--t1);
+  opacity: 0.13;
+  animation: party-spin 80s linear infinite;
+}
+
+@keyframes party-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* the Poké Ball stand under the big Pokémon, in a pale tint of its type;
+   its feet land in the stand's bottom half (60% down). Layout, top to
+   bottom: the spinning Poké Ball (9-35cqw) floats behind the Pokémon,
+   then a gap, then the stand (~36.6-41.2cqw), then the Dex card. */
+.party-stand {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--party-ay) * 100%);
+  width: 24cqw;
+  height: 4.6cqw;
+  translate: -50% -60%;
+  background: color-mix(in srgb, var(--t1) 34%, #fff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 36'%3E%3Cmask id='m'%3E%3Crect width='100' height='36' fill='white'/%3E%3Crect y='16.3' width='100' height='3.4' fill='black'/%3E%3Cellipse cx='50' cy='18' rx='13.5' ry='5.6' fill='black'/%3E%3C/mask%3E%3Cellipse cx='50' cy='18' rx='48' ry='16' fill='black' mask='url%28%23m%29'/%3E%3Cellipse cx='50' cy='18' rx='8.6' ry='3.3' fill='black'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 36'%3E%3Cmask id='m'%3E%3Crect width='100' height='36' fill='white'/%3E%3Crect y='16.3' width='100' height='3.4' fill='black'/%3E%3Cellipse cx='50' cy='18' rx='13.5' ry='5.6' fill='black'/%3E%3C/mask%3E%3Cellipse cx='50' cy='18' rx='48' ry='16' fill='black' mask='url%28%23m%29'/%3E%3Cellipse cx='50' cy='18' rx='8.6' ry='3.3' fill='black'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+
+/* Pixel art only stays sharp when every art pixel lands on whole SCREEN
+   pixels, which on scaled displays (125%, 150%, 175%...) aren't whole CSS
+   pixels. So js/game-page.js sets the size (--w natural width x the
+   --party-px scale) and the top-left corner (--sx / --sy) already snapped
+   to the screen's pixel grid. No filter or transform at rest — either
+   would make the browser resample it. */
+.party-sprite {
+  position: absolute;
+  left: var(--sx, 0);
+  top: var(--sy, 0);
+  width: calc(var(--w, 100) * var(--party-px, 2px));
+  image-rendering: pixelated;
+}
+
+.party-sprite:not([src]) {
+  visibility: hidden;
+}
+
+.party-sprite.enter {
+  animation: party-enter 0.3s ease-out;
+}
+
+@keyframes party-enter {
+  from {
+    opacity: 0;
+    translate: 0 1.2cqw;
+  }
+}
+
+/* Dex card under the showcase: number, name + held Mega Stone, types */
+.party-plate {
+  position: absolute;
+  left: 23%;
+  bottom: 2.4cqw;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 0.9cqw 1.6cqw;
+  border-radius: 1.2cqw;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0.5cqw 1.8cqw color-mix(in srgb, var(--t1) 18%, transparent),
+    0 0 0 1px rgba(40, 50, 90, 0.05);
+  white-space: nowrap;
+}
+
+.party-no {
+  font-size: 1.1cqw;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--pk-ink);
+}
+
+.party-full {
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  font-size: 2.2cqw;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+/* the held Mega Stone, right after the name */
+.party-plate-stone {
+  width: 2cqw;
+  height: 2cqw;
+}
+
+.party-types {
+  display: flex;
+  gap: 0.5cqw;
+}
+
+.party-type {
+  display: flex;
+  align-items: center;
+  gap: 0.5cqw;
+  padding: 0.35cqw 1cqw 0.35cqw 0.45cqw;
+  border-radius: 2cqw;
+  font-size: 1.15cqw;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0.08cqw 0.15cqw rgba(0, 0, 0, 0.25);
+}
+
+.party-type::before {
+  content: "";
+  width: 1.4cqw;
+  height: 1.4cqw;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-mask: radial-gradient(circle, transparent 34%, #000 36%);
+  mask: radial-gradient(circle, transparent 34%, #000 36%);
+}
+
+/* ----- Party cards (right, 2x3) ----- */
+.party-list {
+  position: absolute;
+  right: 2.4cqw;
+  top: 2.4cqw;
+  bottom: 2.4cqw;
+  width: 50%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 1.1cqw;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.party-slot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10cqw 1fr;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 1.4cqw 0 0.6cqw;
+  border: 0;
+  border-radius: 1.4cqw;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  background: #fff;
+  color: var(--pk-ink);
+  box-shadow:
+    0 0.5cqw 1.6cqw rgba(40, 50, 90, 0.12),
+    0 0 0 1px rgba(40, 50, 90, 0.06);
+  transition:
+    transform 0.18s cubic-bezier(0.3, 1.4, 0.6, 1),
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.party-slot:hover {
+  transform: translateY(-0.3cqw);
+}
+
+.party-slot:focus-visible {
+  outline: 0.3cqw solid var(--accent);
+  outline-offset: 0.25cqw;
+}
+
+/* the selected card: the site's purple */
+.party-slot.on {
+  background: var(--accent);
+  color: #fff;
+  box-shadow:
+    0 0.6cqw 2cqw rgba(124, 109, 240, 0.55),
+    0 0 0 0.22cqw #fff;
+}
+
+/* The icon stands on a flat grey Poké Ball platform like the Switch
+   party screen's: one grey ellipse with the band and the ring round the
+   centre button cut out, so the card's colour shows through; the held
+   Mega Stone sits in its bottom-right corner like a held-item badge */
+.party-icon {
+  position: relative;
+  height: 100%;
+}
+
+.party-icon::before {
+  content: "";
+  position: absolute;
+  left: 0.6cqw;
+  right: 0.6cqw;
+  bottom: 1.6cqw;
+  height: 2.6cqw;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 36'%3E%3Cmask id='m'%3E%3Crect width='100' height='36' fill='white'/%3E%3Crect y='16.3' width='100' height='3.4' fill='black'/%3E%3Cellipse cx='50' cy='18' rx='13.5' ry='5.6' fill='black'/%3E%3C/mask%3E%3Cellipse cx='50' cy='18' rx='48' ry='16' fill='%23e2e1e8' mask='url%28%23m%29'/%3E%3Cellipse cx='50' cy='18' rx='8.6' ry='3.3' fill='%23e2e1e8'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+
+/* darker on the selected (purple) card */
+.party-slot.on .party-icon::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 36'%3E%3Cmask id='m'%3E%3Crect width='100' height='36' fill='white'/%3E%3Crect y='16.3' width='100' height='3.4' fill='black'/%3E%3Cellipse cx='50' cy='18' rx='13.5' ry='5.6' fill='black'/%3E%3C/mask%3E%3Cellipse cx='50' cy='18' rx='48' ry='16' fill='%235b4fd1' mask='url%28%23m%29'/%3E%3Cellipse cx='50' cy='18' rx='8.6' ry='3.3' fill='%235b4fd1'/%3E%3C/svg%3E");
+}
+
+.party-icon .party-mon {
+  position: absolute;
+  left: 50%;
+  /* feet in the platform's bottom half (its bottom 1.6cqw + about a third
+     of its 2.6cqw height), less the empty space under the art (--gap,
+     measured in js/game-page.js as a fraction of the icon's width) */
+  bottom: calc(2.5cqw - var(--gap, 0) * 9.6cqw);
+  width: 9.6cqw;
+  translate: -50% 0;
+  image-rendering: pixelated;
+}
+
+.party-slot.on .party-icon .party-mon {
+  animation: party-hop 0.5s steps(2) infinite;
+}
+
+@keyframes party-hop {
+  50% {
+    translate: -50% -0.35cqw;
+  }
+}
+
+/* Held Mega Stone: the official item art */
+.party-stone {
+  position: absolute;
+  right: 0.1cqw;
+  bottom: 0.9cqw;
+  width: 1.8cqw;
+  height: 1.8cqw;
+  filter: drop-shadow(0 0 1px #fff);
+}
+
+.party-meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  row-gap: 0.6cqw;
+  min-width: 0;
+}
+
+.party-name {
+  font-size: 1.9cqw;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-sex {
+  width: 1.6cqw;
+  height: 1.6cqw;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.1cqw;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  box-shadow: 0 0 0 0.15cqw #fff inset;
+}
+
+.party-sex--m {
+  background: #2f86ff;
+}
+.party-sex--f {
+  background: #ff3d5e;
+}
+.party-sex--n {
+  visibility: hidden;
+} /* genderless (Metagross) */
+
+/* the green bar stands for HP (no "HP" label needed) */
+.party-bar {
+  grid-column: 1 / -1;
+  height: 0.6cqw;
+  border-radius: 0.4cqw;
+  background: rgba(23, 17, 43, 0.12);
+  overflow: hidden;
+}
+
+.party-slot.on .party-bar {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.party-bar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(var(--pk-hp), #1fbf4f);
+}
+
+.party-stats {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.4cqw;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.party-stats span:last-child {
+  font-weight: 800;
+}
+
+.party-stats small {
+  font-size: 1.05cqw;
+  font-weight: 800;
+  margin-right: 0.3cqw;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party,
+  .party *,
+  .party *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ----- Narrow screens: showcase on top, Dex card, then the party list ----- */
+@container (max-width: 640px) {
+  .party {
+    aspect-ratio: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 16px 16px;
+    border-radius: 18px;
+  }
+
+  .party-head {
+    position: static;
+    gap: 8px;
+  }
+  .party-ball {
+    width: 32px;
+    height: 32px;
+  }
+  .party-head h4 {
+    font-size: 28px;
+  }
+
+  .party-stage {
+    --party-ay: 0.86;
+    position: relative;
+    order: 1;
+    width: auto;
+    height: 290px;
+    margin-top: 4px;
+  }
+
+  .party-watermark {
+    width: 190px;
+    top: 40%;
+  }
+  .party-stand {
+    width: 180px;
+    height: 34px;
+  }
+
+  .party-plate {
+    position: static;
+    order: 2;
+    translate: none;
+    align-self: center;
+    gap: 12px;
+    margin-top: 6px;
+    padding: 8px 14px;
+    border-radius: 12px;
+  }
+
+  .party-no {
+    font-size: 10px;
+  }
+  .party-full {
+    font-size: 17px;
+    gap: 6px;
+  }
+  .party-plate-stone {
+    width: 18px;
+    height: 18px;
+  }
+  .party-types {
+    gap: 4px;
+  }
+  .party-type {
+    font-size: 10px;
+    gap: 4px;
+    padding: 3px 8px 3px 4px;
+  }
+  .party-type::before {
+    width: 11px;
+    height: 11px;
+  }
+
+  .party-list {
+    position: static;
+    order: 3;
+    width: auto;
+    margin-top: 18px;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    gap: 8px;
+  }
+
+  .party-slot {
+    height: 64px;
+    grid-template-columns: 66px 1fr;
+    padding: 0 16px 0 4px;
+    border-radius: 14px;
+  }
+
+  .party-slot:hover {
+    transform: none;
+  }
+
+  .party-icon::before {
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    height: 16px;
+  }
+  .party-icon .party-mon {
+    width: 60px;
+    bottom: calc(11px - var(--gap, 0) * 60px);
+  }
+  .party-stone {
+    right: 0;
+    bottom: 3px;
+    width: 17px;
+    height: 17px;
+  }
+
+  .party-meta {
+    row-gap: 5px;
+  }
+  .party-name {
+    font-size: 16px;
+  }
+  .party-sex {
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+  }
+  .party-bar {
+    height: 6px;
+    border-radius: 3px;
+  }
+  .party-stats {
+    font-size: 14px;
+  }
+  .party-stats small {
+    font-size: 10px;
+  }
+}
+
+/* ----- Phones: the Pokémon panel's party side made readable -----
+   Shrunk to the phone's width (js/game-page.js, fitMini) the 16:9 panel
+   came out ~210px tall, so the six cards on the right were tiny next to
+   the big Pokémon on the left. Here the panel is square instead, the party
+   is one column of six wider rows, everything in them about 1.5-1.9x
+   bigger, and the Dex card stacks under the showcase. Sizes are still in
+   cqw (of the 880px .party-wrap), so it all scales as one picture. */
+@media (max-width: 700px) {
+  .party {
+    aspect-ratio: 1 / 1;
+  }
+
+  .party-head {
+    top: 2.6cqw;
+    gap: 1.4cqw;
+  }
+
+  .party-ball {
+    width: 5.4cqw;
+    height: 5.4cqw;
+  }
+
+  .party-head h4 {
+    font-size: 5.2cqw;
+  }
+
+  .party-stage {
+    --party-ay: 0.66;
+    width: 44%;
+  }
+
+  .party-watermark {
+    top: 40%;
+    width: 34cqw;
+  }
+
+  .party-stand {
+    width: 28cqw;
+    height: 5.4cqw;
+  }
+
+  /* number, name + stone, then the types, stacked */
+  .party-plate {
+    left: 22%;
+    bottom: 3.4cqw;
+    flex-direction: column;
+    gap: 1.2cqw;
+    padding: 1.8cqw 2.6cqw;
+    border-radius: 2cqw;
+  }
+
+  .party-no {
+    font-size: 2cqw;
+  }
+
+  .party-full {
+    font-size: 4cqw;
+    gap: 1cqw;
+  }
+
+  .party-plate-stone {
+    width: 3.6cqw;
+    height: 3.6cqw;
+  }
+
+  .party-types {
+    gap: 1cqw;
+  }
+
+  .party-type {
+    font-size: 2.3cqw;
+    gap: 0.8cqw;
+    padding: 0.6cqw 1.8cqw 0.6cqw 0.8cqw;
+    border-radius: 3cqw;
+  }
+
+  .party-type::before {
+    width: 2.6cqw;
+    height: 2.6cqw;
+  }
+
+  .party-list {
+    right: 2.6cqw;
+    top: 2.6cqw;
+    bottom: 2.6cqw;
+    width: 53%;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 1.5cqw;
+  }
+
+  .party-slot {
+    grid-template-columns: 15cqw 1fr;
+    padding: 0 2.6cqw 0 1cqw;
+    border-radius: 2.2cqw;
+  }
+
+  .party-icon::before {
+    left: 1cqw;
+    right: 1cqw;
+    bottom: 2cqw;
+    height: 3.8cqw;
+  }
+
+  .party-icon .party-mon {
+    width: 13.5cqw;
+    bottom: calc(3.2cqw - var(--gap, 0) * 13.5cqw);
+  }
+
+  .party-stone {
+    width: 3cqw;
+    height: 3cqw;
+    bottom: 1.2cqw;
+  }
+
+  .party-meta {
+    row-gap: 1cqw;
+  }
+
+  .party-name {
+    font-size: 3.6cqw;
+  }
+
+  .party-sex {
+    width: 3cqw;
+    height: 3cqw;
+    font-size: 2cqw;
+  }
+
+  .party-bar {
+    height: 1.1cqw;
+    border-radius: 0.7cqw;
+  }
+
+  .party-stats {
+    font-size: 2.7cqw;
+  }
+
+  .party-stats small {
+    font-size: 2cqw;
+    margin-right: 0.5cqw;
+  }
 }
 
 /* ===== Anime Browse Drawer (anime.html) ===== */
+/* Zero-height marker sitting in the normal document flow right after
+   <main> (i.e. right below the summary panel) — js/anime-page.js watches
+   it with an IntersectionObserver to know when the page has been
+   scrolled down that far, regardless of the drawer's own current mode
+   (see .anime-drawer.embedded below). It has no size/visual of its own,
+   it's purely a scroll-position marker. */
+.anime-drawer-anchor {
+  height: 0;
+}
+
 /* A bottom sheet that keeps a round handle peeking above the fold at all
    times — position: fixed, so it stays put through scroll instead of
    scrolling away with the page — and slides the rest of itself up when
@@ -1782,9 +4220,27 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Closed: only the round handle's own height stays on screen, the panel
+  /* This box spans the full viewport width (left/right: 0) so the round
+     handle can sit centered, but closed/peeking it's otherwise empty
+     space to either side of that handle — without this, that invisible
+     area still counted as "this element" for hit-testing and silently
+     ate clicks meant for whatever sat underneath it (e.g. a video's
+     native control bar, if the page happened to be scrolled so the bar
+     landed at the same height as the peeking handle). pointer-events:auto
+     is restored below on the handle and panel, the only parts that
+     actually need to be clickable/draggable. */
+  pointer-events: none;
+  /* Space between the round handle and the panel below it (was 0 — the
+     handle looked glued directly onto the panel's edge with no breathing
+     room). js/anime-page.js's closedOffsetPx() reads this back at
+     runtime for the drag gesture, so it stays in sync with whatever this
+     is set to. */
+  gap: 0.75rem;
+  /* Closed: only the round handle's own height plus the gap above stays
+     on screen (the extra gap's worth keeps the handle from sitting flush
+     against the very bottom edge of the viewport too), the panel
      underneath it pushed just out of view. */
-  transform: translateY(calc(100% - 3.25rem));
+  transform: translateY(calc(100% - 3.25rem - 0.75rem));
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1792,25 +4248,95 @@ h2 {
   transform: translateY(0);
 }
 
+/* Once js/anime-page.js's IntersectionObserver sees .anime-drawer-anchor
+   scroll into view, the drawer stops being a floating fixed overlay and
+   becomes a normal, already-expanded section sitting right in the page
+   flow where the anchor is (i.e. right below the summary panel) — the
+   handle (you can't drag/peek something that isn't floating) is hidden.
+   Declared after .anime-drawer.open so its transform: none wins the tie
+   when both classes are present (see js/anime-page.js — embedding
+   intentionally leaves .open alone rather than juggling it, since this
+   rule already overrides whatever .open would have done).
+   Full-bleed + the same background/square-top treatment as
+   .anime-summary-panel right above it (not a narrower, centered,
+   separately-shadowed card) — that mismatch was what read as an
+   "obvious separation" between them: a full-width white band abruptly
+   giving way to a smaller floating box with the sparkle background
+   peeking in on both sides. This continues the exact same white band
+   instead, only rounding its own bottom corners since it's now the
+   true last thing on the page (same reasoning .anime-summary-panel's
+   own square bottom corners already use one panel up). */
+.anime-drawer.embedded {
+  position: static;
+  transform: none;
+  transition: none;
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
+  background: var(--bg);
+  border-radius: 0 0 1.5rem 1.5rem;
+  /* Equal top/bottom (was top: 0, bottom: the clamp() alone) — that
+     asymmetry pushed the fixed-height panel below up against the top of
+     this wrapper, leaving all the reserved breathing room trailing after
+     it. Against the wrapper's own full height (panel + that leftover
+     space), the panel — and the nav arrows centered inside it — ended up
+     looking pinned around 40% down instead of centered. Matching padding
+     on both sides is what actually centers it. */
+  padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+}
+
+.anime-drawer.embedded .anime-drawer-handle {
+  display: none;
+}
+
+/* The embedded drawer as its own separate rounded panel instead of
+   continuing the white band of the panel above it — set on anime.html's
+   drawer, and by js/game-page.js on games with a Team panel */
+.anime-drawer.embedded.drawer-separate {
+  border-radius: 1.5rem;
+  box-shadow: var(--frame-shadow);
+}
+
+.anime-drawer.embedded .anime-drawer-panel {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* No visible circle — was a white filled circle behind the arrow (bg +
+   frame-shadow + rounded), now it's just the purple arrow floating on
+   its own. Width/height (and so the clickable/draggable area) stay the
+   same, they just no longer paint a background. */
 .anime-drawer-handle {
   width: 3.25rem;
   height: 3.25rem;
-  border-radius: 50%;
   border: none;
-  background: var(--bg);
-  box-shadow: var(--frame-shadow);
+  background: none;
   color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex: 0 0 auto;
+  /* .anime-drawer (the parent) turns this off so its own empty space
+     doesn't block clicks meant for whatever's underneath — restored here
+     since the handle itself is the one part that must stay clickable. */
+  pointer-events: auto;
 }
 
 .anime-drawer-handle svg {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.35s ease;
+  /* Bigger arrow, same 3.25rem (52px) circle around it — was 20px, then
+     24px, still read as tiny against the circle, now 32px. */
+  width: 32px;
+  height: 32px;
+  /* Same weight as .np-close svg (the Now Playing panel's own close
+     button, top-right) — matches that icon's actual rendered thickness
+     rather than the plain stroke-width="2" left on the element itself. */
+  stroke-width: 4;
+  /* Same curve as .anime-drawer's own slide transition (not just the same
+     duration) — mismatched easing between the icon's rotation and the
+     panel's slide was what made the two read as uncoordinated/awkward
+     even though both run for 0.35s. */
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Same up-chevron, just flipped — reads as "drag down to close" once the
@@ -1836,12 +4362,19 @@ h2 {
   gap: 0.75rem;
   height: 16rem;
   box-sizing: border-box;
+  /* Same reasoning as .anime-drawer-handle: .anime-drawer (the parent)
+     turns pointer-events off for its own empty space, so it has to be
+     restored here for the actual panel content to stay clickable/
+     draggable once the drawer is open (or embedded in the page). */
+  pointer-events: auto;
 }
 
+/* Same size as .carousel-arrow (Home's Favourite carousel) — was 2.25rem,
+   smaller than that reference for no real reason. */
 .drawer-nav {
   flex: 0 0 auto;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   border: none;
   background: var(--placeholder-bg);
@@ -1851,11 +4384,26 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* .anime-drawer-panel's align-items: center lines this up with the full
+     height of a card — poster frame + its title text below — not the
+     poster itself, so centered-on-the-row actually landed visibly below
+     the art's own center. Nudging up by roughly half a (2-line) title
+     block's height is what lines it back up with the poster's own
+     middle instead. */
+  transform: translateY(-1.25rem);
 }
 
 /* Fills the full panel width (not capped/centered to a narrower strip)
    so the 3 cards spread out across the whole length instead of bunching
    into the middle with dead space on either side. */
+/* The 16px padding + matching negative margin (left, right and top) is
+   clip buffer for the hover tilt below, same technique as Home's
+   .game-section .preview-window: the box grows by 16px on those sides
+   while the cards' resting position stays exactly where it was.
+   .drawer-item-frame:hover grows a ~295x166 card by ~13px per side and
+   ~11px upward, and the cards sat just 3px below the old top edge. 16px
+   matches the track's smallest gap (1rem), so the next card still never
+   peeks in at the sides. */
 .anime-drawer-viewport {
   flex: 1;
   min-width: 0;
@@ -1863,6 +4411,8 @@ h2 {
   align-self: stretch;
   display: flex;
   align-items: center;
+  margin: -16px -16px 0;
+  padding: 16px 16px 0;
 }
 
 /* Holds every anime (several looping cycles either side of the real 5 —
@@ -1899,8 +4449,9 @@ h2 {
   user-drag: none;
 }
 
-/* Stops the frame hover-zoom (its own 0.25s transition) from firing as
-   the pointer crosses cards mid-drag. */
+/* Stops the frame hover tilt (its own 0.3s transition) from firing as
+   the pointer crosses cards mid-drag — see the :not(.track-dragging) on
+   the hover rule below. */
 .anime-drawer-track.track-dragging .drawer-item-frame {
   pointer-events: none;
 }
@@ -1928,7 +4479,10 @@ h2 {
   outline: 1.5px solid rgba(0, 0, 0, 0.18);
   outline-offset: -1.5px;
   background: var(--placeholder-bg);
-  transition: transform 0.25s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  will-change: transform;
 }
 
 .drawer-item-frame img {
@@ -1937,11 +4491,14 @@ h2 {
   object-fit: cover;
 }
 
-/* Contracts (not expands) on hover — scaling up pushed the frame's edges
-   into its neighbors/the viewport's clipped edge, which is what looked
-   like the card getting blocked/cut off by invisible edges. */
-.drawer-item:hover .drawer-item-frame {
-  transform: scale(0.95);
+/* Same hover tilt as Home's Anime/Game cards (.preview-card:hover). The
+   viewport's clip buffer (above) is what gives it room to grow without
+   getting cut off at the edges. */
+.anime-drawer-track:not(.track-dragging) .drawer-item:hover .drawer-item-frame {
+  position: relative;
+  z-index: 2;
+  transform: scale(1.07) rotate(-2deg);
+  box-shadow: var(--frame-shadow);
 }
 
 .drawer-item.active .drawer-item-frame {
@@ -1961,14 +4518,91 @@ h2 {
   -webkit-box-orient: vertical;
 }
 
+/* Phones: one card at a time, edge to edge across the screen, swiped with
+   the browser's own sideways scrolling + snap points (js/browse-drawer.js
+   turns off the desktop slide/drag there). No arrows. */
 @media (max-width: 700px) {
-  .anime-drawer-panel {
-    height: 12.5rem;
-    gap: 0.4rem;
+  /* no white panel around it: just the picture, edge to edge, with its
+     title on a see-through band across the bottom */
+  .anime-drawer.embedded,
+  .anime-drawer.embedded.drawer-separate {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
   }
 
+  .anime-drawer-panel {
+    height: auto;
+    gap: 0;
+    padding: 0;
+  }
+
+  .drawer-nav {
+    display: none;
+  }
+
+  .anime-drawer-viewport {
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .anime-drawer-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .anime-drawer-track {
+    transform: none !important;
+    transition: none;
+    gap: 0;
+    touch-action: auto;
+    cursor: auto;
+  }
+
+  .drawer-item {
+    position: relative;
+    flex-basis: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* square edges since it meets the screen edges */
+  .drawer-item-frame,
+  .drawer-item.active .drawer-item-frame {
+    border-radius: 0;
+    outline: none;
+  }
+
+  /* the usual see-through dark caption bar over the bottom of the
+     picture, with white text so it reads on any image */
   .drawer-item-title {
-    font-size: 0.75rem;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0.3rem 5vw;
+    font-size: 0.95rem;
+    -webkit-line-clamp: 1;
+    color: #fff;
+    /* above the picture even while hovered (the desktop hover lifts the
+       picture to z-index 2, and a tapped card stays "hovered" on phones) */
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* no hover tilt or lift on touch (it would stick after a tap) */
+  .anime-drawer-track:not(.track-dragging) .drawer-item:hover .drawer-item-frame {
+    transform: none;
+    box-shadow: none;
+    z-index: auto;
   }
 }
 
@@ -1976,7 +4610,9 @@ h2 {
 .back-to-top {
   position: fixed;
   right: 1.5rem;
-  bottom: 1.5rem;
+  /* just on top of the Netlify badge when there is one (the crystal image
+     sits 3px inside this box, hence the - 3px) */
+  bottom: max(1.5rem, calc(var(--badge-space) - 3px));
   width: 2.75rem;
   height: 2.75rem;
   display: flex;
@@ -1985,7 +4621,9 @@ h2 {
   opacity: 0;
   pointer-events: none;
   transform: translateY(10px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
   z-index: 100;
   perspective: 80px;
 }
@@ -2047,17 +4685,37 @@ h2 {
   }
 }
 
-@media (max-width: 700px) {
+/* Under ~960px the title, menu and EN/JP don't fit on one line with even
+   spaces, so the top bar stacks centred (the phone layout) from here down. */
+@media (max-width: 960px) {
   .topbar {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
+    padding: 1rem 5vw;
   }
 
   .topbar-left,
   .main-nav,
   .topbar-right {
     justify-self: center;
+  }
+
+  .topbar-left,
+  .topbar-right {
+    margin-right: 0;
+  }
+
+  .site-title {
+    --tu: 1rem;
+  }
+}
+
+@media (max-width: 700px) {
+  /* keep all five links on one row: shrink text and gaps with the screen */
+  .main-nav {
+    --nav-gap: clamp(0.6rem, 3.5vw, 0.9rem);
+    font-size: clamp(0.85rem, 4vw, 1.1rem);
   }
 
   .section-panel {
@@ -2072,8 +4730,13 @@ h2 {
     height: 2rem;
   }
 
+  /* one slide edge to edge: square corners, no shadow or outline, since
+     it meets the screen edges */
   .carousel-slide {
     flex-basis: 100%;
+    border-radius: 0;
+    outline: none;
+    box-shadow: none;
   }
 
   .preview-item {
@@ -2092,4 +4755,1882 @@ h2 {
   .more-pill {
     align-self: flex-end;
   }
+}
+
+/* Phones: Home's four panels laid out like their own pages' pickers.
+   Anime / Game: one card at a time, edge to edge, swiped with the
+   browser's own sideways scrolling + snap points, title on a see-through
+   band (same as the browse carousel on anime.html / games.html —
+   js/main.js turns off the desktop slide/drag there). Character: the X
+   from character.html. Music: the 2×2 from music.html. */
+@media (max-width: 700px) {
+  .anime-section .section-panel,
+  .game-section .section-panel {
+    padding-top: 0;
+  }
+
+  .preview-window,
+  .game-section .preview-window {
+    width: auto;
+    margin: 0 -5vw;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .preview-window::-webkit-scrollbar {
+    display: none;
+  }
+
+  .preview-track {
+    transform: none !important;
+    transition: none;
+    gap: 0;
+    touch-action: auto;
+    cursor: auto;
+  }
+
+  .preview-track .loop-clone {
+    display: block;
+  }
+
+  .preview-item {
+    position: relative;
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* square edges since it meets the screen edges; no hover tilt on touch
+     (it would stick after a tap) */
+  .card-placeholder {
+    border-radius: 0;
+    outline: none;
+  }
+
+  .preview-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .preview-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0.3rem 5vw;
+    font-size: 0.95rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* swiping replaces the scrub bar */
+  .scrub-bar {
+    display: none;
+  }
+
+  /* the panels are full width here, so no page-centering insets */
+  .character-section .character-window,
+  .music-section .music-window,
+  .anime-section .preview-footer,
+  .music-section .preview-footer {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Character: an X — four corners + one in the middle. Each icon spans
+     two half-rows, so the middle one sits between the top and bottom
+     pairs. */
+  .character-track {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    grid-template-rows: repeat(4, auto);
+    justify-content: space-between;
+    gap: 0.8rem 0;
+  }
+
+  .character-track .char-item {
+    width: clamp(90px, 27vw, 130px);
+  }
+
+  .char-item[href$="id=ram"] {
+    grid-area: 1 / 1 / 3 / 2;
+  } /* top left */
+  .char-item[href$="id=zero-two"] {
+    grid-area: 1 / 3 / 3 / 4;
+  } /* top right */
+  .char-item[href$="id=emilia"] {
+    grid-area: 2 / 2 / 4 / 3;
+  } /* middle */
+  .char-item[href$="id=rimuru"] {
+    grid-area: 3 / 1 / 5 / 2;
+  } /* bottom left */
+  .char-item[href$="id=frieren"] {
+    grid-area: 3 / 3 / 5 / 4;
+  } /* bottom right */
+
+  /* Music: a tidy 2×2 */
+  .music-track {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: space-evenly;
+    gap: 1.5rem 0;
+  }
+}
+
+/* ===== Music Page (music.html) ===== */
+/* Artist row + hero reuse the Character page styles above. Below them:
+   the "now playing" stage (collapsed until the first song plays) and the
+   translucent song table. */
+.music-page {
+  padding-bottom: clamp(2.5rem, 6vw, 4rem);
+}
+
+/* Collapsed by default: a 0fr -> 1fr grid row animates the height open
+   without needing to know how tall the content is. */
+.music-stage {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.5s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.4s ease;
+}
+
+.music-stage.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* direction and alignment: see the Lyrics section below */
+.music-stage-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  padding: 0 5vw;
+}
+
+.music-stage.is-open .music-stage-inner {
+  padding-bottom: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+/* Square cover -> 16:9 video: width and height animate between the two, so
+   the box morphs instead of jumping. */
+.stage-media {
+  --cover-size: min(300px, 72vw);
+  --video-width: min(720px, 90vw);
+  position: relative;
+  flex-shrink: 0;
+  width: var(--cover-size);
+  height: var(--cover-size);
+  border-radius: 18px;
+  overflow: hidden;
+  /* Light behind the cover (not black): the browser blends the image's
+     edge pixels with whatever sits behind them, and a dark backing showed
+     through as a thin dark fringe/spots around the rounded edges. Only
+     video mode (below) gets the black backing a video needs. */
+  background: var(--placeholder-bg);
+  isolation: isolate;
+  box-shadow: 0 12px 36px rgba(60, 40, 140, 0.22);
+  /* Song <-> Video switches with a quick fade (opacity is cheap for the
+     browser) instead of animating width/height, which re-laid-out the
+     whole song table on every frame and dropped frames while scrolling. */
+  transition: opacity 0.15s ease;
+}
+
+.stage-media.is-switching {
+  opacity: 0;
+}
+
+.stage-media[data-mode="video"] {
+  width: var(--video-width);
+  height: calc(var(--video-width) * 9 / 16);
+  border-radius: 14px;
+  /* No backing colour on the box itself: it lands on fractional pixels
+     (e.g. 353.82 × 199.03 on a phone) while the video picture snaps to
+     whole ones, so anything painted behind it peeked out as a sub-pixel
+     line along the bottom/right (black specks, or a light line). The video
+     overscans the box by 1px instead (see .stage-video below), so the
+     box's rounded clip always cuts through solid picture. */
+  background: transparent;
+}
+
+/* border-radius: inherit on the children too — Chrome can leak a video
+   element's (composited) layer past a parent's rounded overflow clip,
+   leaving dark specks at the corners. Rounding the children themselves
+   closes that gap. */
+.stage-cover,
+.stage-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.stage-cover {
+  object-fit: cover;
+  background: var(--placeholder-bg);
+}
+
+/* Only one of cover/video is ever rendered. In cover mode the <video> is
+   display: none — the sound keeps playing from it, but the browser stops
+   drawing 1080p frames nobody can see. */
+.stage-video {
+  object-fit: contain;
+  /* letterbox bars (e.g. NOX LUX's 2.39:1) */
+  background: #000;
+  display: none;
+  /* 1px bigger than the box on every side (see .stage-media[data-mode=
+     "video"]): the rounded clip then always lands on solid picture, never
+     on the sub-pixel edge where the picture stops. Radius +1 to match. */
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  border-radius: 15px;
+}
+
+.stage-media[data-mode="video"] .stage-cover {
+  display: none;
+}
+
+.stage-media[data-mode="video"] .stage-video {
+  display: block;
+}
+
+/* The video is off in its picture-in-picture window (js/music-page.js):
+   the song's cover fills its box on the page meanwhile, on top of the
+   (still running) video instead of an empty space. */
+.stage-media.is-pip .stage-cover {
+  display: block;
+  z-index: 1;
+  /* the whole square cover in the middle of the 16:9 box, black either
+     side (not cropped to fill it) */
+  object-fit: contain;
+  background: #000;
+}
+
+/* Small Song | Video pill right under the cover. Only shown for songs
+   whose file is an .mp4. */
+.stage-modes {
+  display: inline-flex;
+  gap: 2px;
+  margin-top: 0.9rem;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.stage-modes[hidden] {
+  display: none;
+}
+
+.stage-mode {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  padding: 0.35rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.stage-mode.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.stage-info {
+  margin-top: 0.9rem;
+  text-align: center;
+  max-width: min(520px, 90vw);
+}
+
+.stage-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stage-artist {
+  margin-top: 0.15rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.stage-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: min(420px, 86vw);
+  margin-top: 0.8rem;
+}
+
+.stage-time {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.4em;
+  text-align: center;
+}
+
+.stage-seek {
+  --fill: 0%;
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--fill),
+    rgba(124, 109, 240, 0.2) var(--fill)
+  );
+  cursor: pointer;
+}
+
+.stage-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.stage-seek::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Sizes match the top-right Now Playing player (.player-btn/.player-play):
+   44px side icons with 0.4rem padding, a 3.4rem play circle with a 2rem
+   icon. Colors are the light-page versions. */
+.stage-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.stage-btn,
+.stage-play {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.15s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.stage-btn {
+  padding: 0.4rem;
+  border-radius: 0.6rem;
+  color: var(--text-soft);
+}
+
+.stage-btn svg {
+  width: 44px;
+  height: 44px;
+}
+
+.stage-btn:hover {
+  color: var(--text);
+}
+
+.stage-btn:active {
+  transform: scale(0.9);
+}
+
+.stage-btn.toggle-on {
+  color: var(--accent);
+}
+
+.stage-play {
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 20px -8px rgba(124, 109, 240, 0.7);
+}
+
+.stage-play:hover {
+  transform: scale(1.06);
+  background: var(--accent-dark);
+}
+
+.stage-play:active {
+  transform: scale(0.94);
+}
+
+.stage-play svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.stage-play .icon-pause,
+.music-stage.is-playing .stage-play .icon-play {
+  display: none;
+}
+
+.music-stage.is-playing .stage-play .icon-pause {
+  display: block;
+}
+
+/* ----- Song table ----- */
+/* Translucent panel so the sparkle background shows through. No blur:
+   on a panel this tall, re-blurring behind it every frame made scrolling
+   (and anything moving above it) drop frames. */
+.song-panel {
+  max-width: 900px;
+  margin: 0 auto;
+  width: calc(100% - 10vw);
+  padding: 1.1rem clamp(0.6rem, 2vw, 1.25rem) 1rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: var(--frame-shadow);
+}
+
+.song-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.6rem 0.8rem;
+}
+
+.song-panel-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.song-panel-count {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.song-sort {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.song-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.song-sort-btn:hover,
+.song-sort-btn[aria-expanded="true"] {
+  background: rgba(124, 109, 240, 0.1);
+  color: var(--text);
+}
+
+.song-sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 190px;
+  padding: 0.35rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(40, 30, 90, 0.18);
+  animation: song-menu-in 0.14s ease-out;
+}
+
+.song-sort-menu[hidden] {
+  display: none;
+}
+
+@keyframes song-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.song-sort-menu-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  padding: 0.45rem 0.7rem 0.3rem;
+}
+
+.song-sort-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.song-sort-option:hover {
+  background: rgba(124, 109, 240, 0.08);
+}
+
+.song-sort-option.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Column labels: # | Title | duration */
+.song-cols,
+.song-row {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.song-cols {
+  padding: 0 0.6rem 0.5rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(124, 109, 240, 0.15);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+}
+
+.song-col-num,
+.song-num {
+  text-align: center;
+}
+
+/* "#" and "Title" headers are buttons (click to sort). */
+.song-col-sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  justify-self: start;
+  transition: color 0.15s ease;
+}
+
+.song-col-num.song-col-sort {
+  justify-self: center;
+  justify-content: center;
+}
+
+.song-col-sort:hover,
+.song-col-sort.active {
+  color: var(--text);
+}
+
+.song-col-arrow {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.song-col-arrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.song-col-time,
+.song-time {
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 0.25rem;
+}
+
+.song-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.song-list.is-custom {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.song-row {
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  -webkit-touch-callout: none;
+}
+
+.song-row:hover,
+.song-row:focus-visible {
+  background: rgba(124, 109, 240, 0.08);
+  outline: none;
+}
+
+.song-num {
+  position: relative;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+
+/* Hovering a row swaps its number for a play icon (or pause, if it's the
+   song currently playing), Spotify-style. */
+.song-num-icon {
+  display: none;
+  justify-content: center;
+  color: var(--text);
+}
+
+.song-num-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.song-row:hover .song-num-text {
+  display: none;
+}
+
+.song-row:hover .song-num-play {
+  display: flex;
+}
+
+.song-row.is-playing:not(.is-paused):hover .song-num-play {
+  display: none;
+}
+
+.song-row.is-playing:not(.is-paused):hover .song-num-pause {
+  display: flex;
+}
+
+.song-main {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.song-cover {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--placeholder-bg);
+}
+
+.song-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.song-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.song-title,
+.song-artist {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-artist {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  margin-top: 0.1rem;
+}
+
+/* Title + "has a music video" marker side by side. Flex (not
+   vertical-align) keeps the marker on whole pixels so it stays sharp; the
+   ellipsis moves to the text itself. */
+.song-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.song-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-badge {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* "· Re:ZERO Music" after the artist — a step softer than the artist. */
+.song-series {
+  opacity: 0.75;
+}
+
+.song-time {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+
+/* The song that's loaded in the player: purple tint + purple number and
+   title. */
+.song-row.is-playing {
+  background: rgba(124, 109, 240, 0.14);
+}
+
+.song-row.is-playing .song-num,
+.song-row.is-playing .song-num-icon,
+.song-row.is-playing .song-title {
+  color: var(--accent);
+}
+
+/* Playing (not paused): the number becomes animated purple sound bars,
+   Spotify-style. Paused: the purple number comes back. Hover still shows
+   the pause icon. */
+.song-eq {
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 14px;
+}
+
+.song-eq i {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: bottom;
+  animation: song-eq 0.9s ease-in-out infinite;
+}
+
+.song-eq i:nth-child(2) {
+  animation-duration: 0.7s;
+  animation-delay: -0.3s;
+}
+
+.song-eq i:nth-child(3) {
+  animation-duration: 1.1s;
+  animation-delay: -0.5s;
+}
+
+.song-eq i:nth-child(4) {
+  animation-duration: 0.8s;
+  animation-delay: -0.15s;
+}
+
+@keyframes song-eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.song-row.is-playing:not(.is-paused) .song-num-text {
+  display: none;
+}
+
+.song-row.is-playing:not(.is-paused) .song-eq {
+  display: flex;
+}
+
+.song-row.is-playing:not(.is-paused):hover .song-eq {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-eq i {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
+
+/* Songs without a file yet. */
+.song-row.is-unavailable {
+  cursor: default;
+}
+
+.song-row.is-unavailable .song-cover,
+.song-row.is-unavailable .song-text {
+  opacity: 0.45;
+}
+
+.song-row.is-unavailable:hover .song-num-text {
+  display: inline;
+}
+
+.song-row.is-unavailable:hover .song-num-play {
+  display: none;
+}
+
+.song-row.is-unavailable .song-time {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.song-list.is-custom .song-row.is-unavailable {
+  cursor: grab;
+}
+
+.song-empty {
+  padding: 1.5rem 0.6rem;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.song-hint {
+  margin-top: 0.6rem;
+  padding: 0 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.song-hint[hidden] {
+  display: none;
+}
+
+/* Drag to reorder */
+.song-drag-placeholder {
+  opacity: 0.3;
+  background: rgba(124, 109, 240, 0.12);
+}
+
+.song-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(60, 40, 140, 0.25);
+  transform: scale(1.02);
+  list-style: none;
+}
+
+body.is-dragging-song,
+body.is-dragging-song * {
+  cursor: grabbing !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 600px) {
+  .song-panel {
+    width: calc(100% - 32px);
+  }
+
+  .song-cols,
+  .song-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2.75rem;
+    column-gap: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .music-stage,
+  .stage-media,
+  .stage-cover,
+  .stage-video {
+    transition: none;
+  }
+}
+
+/* The ← / → / Space feedback icon over the video (js/music-page.js,
+   "Video-style controls"). */
+.stage-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12%;
+  pointer-events: none;
+}
+
+.stage-flash[data-side="left"] {
+  justify-content: flex-start;
+}
+
+.stage-flash[data-side="right"] {
+  justify-content: flex-end;
+}
+
+.stage-flash-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0;
+}
+
+.stage-flash-bubble svg {
+  width: 26px;
+  height: 26px;
+}
+
+.stage-flash.show .stage-flash-bubble {
+  animation: stage-flash 0.6s ease-out;
+}
+
+@keyframes stage-flash {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+/* ===== Music page: fullscreen button + mini player ===== */
+/* Fullscreen toggle in the video's bottom-right corner (video mode only). */
+.stage-fs {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  display: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.85;
+  transition:
+    opacity 0.2s ease,
+    transform 0.15s ease;
+}
+
+.stage-fs:hover,
+.stage-fs:focus-visible {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Just the white icon, no backing square. The soft shadow hugs the icon's
+   own lines (not a box) so it stays visible over bright/white frames. */
+.stage-fs svg {
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+.stage-media[data-mode="video"] .stage-fs {
+  display: grid;
+}
+
+.stage-fs .icon-fs-exit,
+.stage-media.is-fullscreen .stage-fs .icon-fs-enter {
+  display: none;
+}
+
+.stage-media.is-fullscreen .stage-fs .icon-fs-exit {
+  display: block;
+}
+
+/* Fullscreen: fill the screen, no rounded corners or size animation. */
+.stage-media.is-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+  /* square edges here, so solid black all the way (the side bars) */
+  background: #000;
+}
+
+.stage-media.is-fullscreen .stage-video {
+  border-radius: 0;
+}
+
+.stage-media.is-fullscreen .stage-fs {
+  right: 20px;
+  bottom: 20px;
+}
+
+/* Mini player: glass panel centered at the bottom of the screen. */
+.mini-player {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 90;
+  width: min(520px, calc(100% - 32px));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem 0.7rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 32px rgba(60, 40, 140, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 16px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s;
+}
+
+.mini-player.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.mini-art,
+.mini-info {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mini-art {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--placeholder-bg);
+}
+
+.mini-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mini-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mini-title,
+.mini-artist {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Scrolling text for lines too long to fit (js/music-page.js, "Scrolling
+   text"). The inner span slides inside the clipped outer span; the
+   negative margin + padding give the left edge room for a soft fade
+   without shifting where the text sits at rest. */
+.mini-title.is-marquee,
+.mini-artist.is-marquee {
+  text-overflow: clip;
+  margin-left: -8px;
+  padding-left: 8px;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 8px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 8px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+.is-marquee .marquee-inner {
+  display: inline-block;
+  padding-right: 16px; /* so the last letter clears the right-edge fade */
+  will-change: transform;
+}
+
+.mini-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mini-artist {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.mini-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mini-btn,
+.mini-play {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.15s ease,
+    color 0.2s ease;
+}
+
+.mini-btn {
+  width: 34px;
+  height: 34px;
+  color: var(--text-soft);
+}
+
+.mini-btn:hover {
+  color: var(--text);
+}
+
+/* Shuffle/repeat: purple when on, like the big player's. */
+.mini-btn.toggle-on {
+  color: var(--accent);
+}
+
+.mini-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mini-play {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+
+.mini-play:hover {
+  transform: scale(1.06);
+}
+
+.mini-play svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mini-play .icon-pause,
+.mini-player.is-playing .mini-play .icon-play {
+  display: none;
+}
+
+.mini-player.is-playing .mini-play .icon-pause {
+  display: block;
+}
+
+/* Thin progress line along the bottom edge — also clickable to seek. */
+.mini-progress {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(124, 109, 240, 0.2);
+  cursor: pointer;
+}
+
+.mini-progress::before {
+  /* bigger invisible hit area for clicking */
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* On narrow screens, tighten the buttons so the controls still fit next
+   to the title (where it sits on phones: the --mini-base rule below). */
+@media (max-width: 700px) {
+  .mini-player {
+    gap: 0.5rem;
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  .mini-controls {
+    gap: 0.1rem;
+  }
+
+  .mini-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .mini-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mini-play {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ----- Click the cover or the video to pause/play ----- */
+.stage-media {
+  cursor: pointer;
+}
+
+/* ----- Lyrics (js/music-page.js, "Lyrics") ----- */
+/* The player column and the lyrics panel sit side by side, centered as a
+   pair. The panel opens by growing its width from 0, so the player
+   slides left as it opens instead of jumping. The lyrics scroll inside a
+   box that's exactly as tall as the player column, so opening them never
+   changes the stage's height. */
+/* align-items: flex-start, not stretch: inside the stage's 0fr -> 1fr
+   open animation, stretch sized the player column to 0 height. Only the
+   lyrics panel stretches (it adds no height of its own). */
+.music-stage-inner {
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  --lyrics-w: min(420px, 34vw);
+  --lyrics-gap: clamp(1.5rem, 3.5vw, 3.5rem);
+}
+
+.stage-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Leave room for the lyrics beside a 16:9 video. */
+.music-stage.lyrics-open .stage-media {
+  --video-width: min(640px, 90vw - var(--lyrics-w) - var(--lyrics-gap));
+}
+
+.stage-lyrics {
+  position: relative;
+  align-self: stretch;
+  flex: 0 0 auto;
+  width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: var(--frame-shadow);
+  transition:
+    width 0.5s cubic-bezier(0.2, 0, 0, 1),
+    margin-left 0.5s cubic-bezier(0.2, 0, 0, 1),
+    opacity 0.3s ease;
+}
+
+.music-stage.lyrics-open .stage-lyrics {
+  width: var(--lyrics-w);
+  margin-left: var(--lyrics-gap);
+  opacity: 1;
+  transition-delay: 0s, 0s, 0.12s;
+}
+
+/* Fixed width (not the animating panel width), so the lines don't
+   re-wrap while it opens. Soft fade at the top and bottom edges. */
+.lyrics-scroll {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--lyrics-w);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 82%, transparent 100%);
+}
+
+.lyrics-scroll.is-scrolled {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14%,
+    #000 82%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 82%, transparent 100%);
+}
+
+.lyrics-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Lines start at the top; the big bottom padding lets the last lines
+   still scroll up to the current-line spot. */
+.lyrics-lines {
+  list-style: none;
+  margin: 0;
+  padding: 1.6rem 1.6rem 70%;
+}
+
+.lyric-line {
+  padding: 0.45rem 0;
+  font-size: clamp(1.1rem, 1.6vw, 1.45rem);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+  opacity: 0.32;
+  cursor: pointer;
+  transform-origin: left center;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    transform 0.25s ease;
+}
+
+.lyric-line.is-past {
+  opacity: 0.55;
+}
+
+.lyric-line.is-active {
+  opacity: 1;
+  color: var(--accent);
+  transform: scale(1.04);
+}
+
+.lyric-line:hover {
+  opacity: 0.85;
+}
+
+/* Instrumental break / intro: three dots that breathe while it's the
+   current "line". */
+.lyric-dots {
+  display: inline-flex;
+  gap: 0.35em;
+  vertical-align: middle;
+}
+
+.lyric-dots i {
+  width: 0.4em;
+  height: 0.4em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.lyric-line.is-active .lyric-dots i,
+.mini-player.is-visible .mini-lyric-now .lyric-dots i {
+  animation: lyric-dot 1.4s ease-in-out infinite;
+}
+
+.lyric-dots i:nth-child(2) {
+  animation-delay: 0.2s !important;
+}
+
+.lyric-dots i:nth-child(3) {
+  animation-delay: 0.4s !important;
+}
+
+@keyframes lyric-dot {
+  0%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+/* Lyrics (歌詞) on/off: a label + slide switch in a pill, right below
+   the Song | Video switch. The mini player's copy reuses it. */
+.lyrics-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lyrics-switch[hidden] {
+  display: none;
+}
+
+.lyrics-switch-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.lyrics-switch-track {
+  position: relative;
+  width: 2.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: rgba(124, 109, 240, 0.22);
+  transition: background 0.2s ease;
+}
+
+.lyrics-switch-thumb {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lyrics-switch[aria-checked="true"] .lyrics-switch-track {
+  background: var(--accent);
+}
+
+.lyrics-switch[aria-checked="true"] .lyrics-switch-thumb {
+  transform: translateX(1rem);
+}
+
+.lyrics-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Narrow screens: no room beside the player, so the lyrics open below
+   it instead (growing in height rather than width). */
+@media (max-width: 900px) {
+  .music-stage-inner {
+    flex-direction: column;
+    align-items: center;
+    --lyrics-w: min(520px, 90vw);
+  }
+
+  .music-stage.lyrics-open .stage-media {
+    --video-width: min(720px, 90vw);
+  }
+
+  .stage-lyrics {
+    width: var(--lyrics-w);
+    height: 0;
+    transition:
+      height 0.5s cubic-bezier(0.2, 0, 0, 1),
+      margin-top 0.5s cubic-bezier(0.2, 0, 0, 1),
+      opacity 0.3s ease;
+  }
+
+  .music-stage.lyrics-open .stage-lyrics {
+    height: min(340px, 55vh);
+    margin-left: 0;
+    margin-top: 1.25rem;
+  }
+}
+
+/* Mini player, stacked from the top: the 歌詞 button over the bar's left
+   end, then (while lyrics are on) the current + next line card, then the
+   bar itself. The button rides up by the card's height (--mini-lyrics-h,
+   measured in js/music-page.js) so the card opens between it and the bar. */
+.mini-lyrics-btn {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  margin-top: 0;
+  transition: bottom 0.25s ease;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 24px rgba(60, 40, 140, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.mini-player.is-visible.lyrics-open .mini-lyrics-btn {
+  bottom: calc(100% + 8px + var(--mini-lyrics-h, 4.5rem) + 8px);
+}
+
+.mini-lyrics {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  padding: 0.7rem 1rem;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 32px rgba(60, 40, 140, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease,
+    visibility 0.25s;
+  pointer-events: none;
+}
+
+.mini-player.is-visible.lyrics-open .mini-lyrics {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.mini-lyric-now {
+  min-height: 1.4em;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--accent);
+}
+
+.mini-lyric-next {
+  margin-top: 0.15rem;
+  min-height: 1.3em;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Phones, Spotify-style: the lyrics card sits UNDER the mini player, in
+   the player's usual slot, and the player moves up by the card's height
+   (--mini-lyrics-h, measured in js/music-page.js). The page also gets
+   extra room at the bottom while the player is showing, so the last songs
+   can scroll up clear of it instead of hiding behind it. */
+@media (max-width: 700px) {
+  :root {
+    /* the player's bottom offset: right at the bottom, the same 16px in
+       from the edge as its sides (the back-to-top crystal moves up above
+       the bar's right end instead of taking a row of its own below it) */
+    --mini-base: max(16px, var(--badge-space));
+  }
+
+  .mini-player {
+    bottom: var(--mini-base);
+    transition:
+      opacity 0.25s ease,
+      transform 0.25s ease,
+      visibility 0.25s,
+      bottom 0.25s ease;
+  }
+
+  /* 歌詞 stays over the bar's left end (here the card opens under the bar,
+     so the button doesn't need to move up) … */
+  .mini-player.is-visible.lyrics-open .mini-lyrics-btn {
+    bottom: calc(100% + 8px);
+  }
+
+  /* … and the crystal over its right end, its bottom lined up with the
+     歌詞 button's (both 8px above the bar); it rides up with the bar when
+     the lyrics card opens under it */
+  body:has(.mini-player.is-visible) .back-to-top {
+    right: 16px;
+    bottom: calc(var(--mini-base) + var(--mini-h, 4.2rem) + 8px);
+    transition:
+      opacity 0.25s ease,
+      transform 0.25s ease,
+      bottom 0.25s ease;
+  }
+
+  body:has(.mini-player.is-visible.lyrics-open) .back-to-top {
+    bottom: calc(
+      var(--mini-base) + var(--mini-lyrics-h, 4.5rem) + 8px + var(--mini-h, 4.2rem) + 8px
+    );
+  }
+
+  .mini-player.lyrics-open {
+    bottom: calc(var(--mini-base) + var(--mini-lyrics-h, 4.5rem) + 8px);
+  }
+
+  .mini-player .mini-lyrics,
+  .mini-player:has(.mini-lyrics-btn:not([hidden])) .mini-lyrics {
+    top: calc(100% + 8px);
+    bottom: auto;
+    transform: translateY(-6px);
+  }
+
+  .mini-player.is-visible.lyrics-open .mini-lyrics {
+    transform: none;
+  }
+
+  /* No ⏮ / ⏭ on phones: swipe the cover/title sideways instead
+     (js/music-page.js, "Swipe the mini player"). pan-y keeps sideways
+     drags on the player for that, while up/down still scrolls the page. */
+  #miniPrev,
+  #miniNext {
+    display: none;
+  }
+
+  .mini-player {
+    touch-action: pan-y;
+  }
+
+  .mini-art,
+  .mini-info {
+    will-change: transform;
+  }
+
+  /* player + the 歌詞 button above it + a little breathing room */
+  body:has(.mini-player.is-visible) .music-page {
+    padding-bottom: calc(var(--mini-base) + var(--mini-h, 4.2rem) + 8px + 2.75rem + 1.5rem);
+  }
+
+  body:has(.mini-player.is-visible.lyrics-open) .music-page {
+    padding-bottom: calc(
+      var(--mini-base) + var(--mini-lyrics-h, 4.5rem) + 8px + var(--mini-h, 4.2rem) + 8px +
+        2.75rem + 1.5rem
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-lyrics,
+  .lyric-line,
+  .lyrics-switch-thumb {
+    transition: none;
+  }
+
+  .lyric-dots i {
+    animation: none !important;
+  }
+}
+
+/* ----- Loading screen (js/loader.js) ----- */
+/* The starlight card, on every page load. Page scrolling is locked while
+   it shows, and page titles hold off building in until it's gone. */
+html.is-loading {
+  overflow: hidden;
+}
+
+html.is-loading .title-content {
+  opacity: 0;
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #f6f4ff;
+  display: grid;
+  place-items: center;
+}
+
+.loader-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loader-title {
+  /* room for the floor circle between the card and the title */
+  margin: 54px 0 0;
+  font-size: 1.05rem;
+  /* deep indigo to match the card and summoning circle; English line underneath */
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #3c3489;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.loader-sub {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: #7f77c9; /* a softer shade of the title's indigo */
+  text-align: center;
+  text-transform: lowercase;
+  letter-spacing: 0.12em;
+  opacity: 0;
+}
+
+.loader-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.loader-fx i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+}
+
+/* Summoning circle on the "floor", just under the card (drawn by
+   js/loader.js), behind the card and the sparkles. */
+.loader-floor {
+  position: absolute;
+  left: 50%;
+  top: 200px;
+  width: 260px;
+  height: 56px;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+/* Starlight card: purple back with the magic circle, white front with
+   the chibi. Flips on the Y axis. */
+.loader-card {
+  position: relative;
+  z-index: 1;
+  width: 150px;
+  height: 210px;
+  perspective: 800px;
+  opacity: 0;
+}
+
+.loader-card-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.loader-card-back,
+.loader-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(60, 40, 140, 0.25);
+}
+
+.loader-card-back {
+  background: #7c6df0;
+  border: 2px solid #cecbf6;
+}
+
+.loader-card-back::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid #afa9ec;
+  border-radius: 11px;
+}
+
+.loader-circle {
+  width: 96px;
+  height: 96px;
+}
+
+.loader-circle-spin {
+  transform-origin: 50px 50px;
+}
+
+.loader-card-front {
+  background: #fff;
+  border: 2px solid #afa9ec;
+  transform: rotateY(180deg);
+}
+
+.loader-card-front img {
+  width: 92%;
+  height: auto;
+}
+
+/* Reduce motion: everything already in place; it simply fades out. */
+.loader.is-static .loader-card,
+.loader.is-static .loader-title,
+.loader.is-static .loader-sub {
+  opacity: 1;
+}
+
+.loader.is-static .loader-card-inner {
+  transform: rotateY(180deg);
+}
+
+.loader.is-static .loader-floor {
+  display: none;
 }

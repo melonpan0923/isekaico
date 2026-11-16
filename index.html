@@ -4,28 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>異世界コレクション</title>
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" href="assets/icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css?v=234">
+<!-- Start downloading a page as soon as the pointer rests on a link to it,
+     so clicking through feels instant (browsers without support ignore this) -->
+<script type="speculationrules">
+{ "prefetch": [{ "where": { "href_matches": "/*" }, "eagerness": "moderate" }] }
+</script>
 </head>
 <body>
+<script src="js/loader.js?v=8"></script>
 
 <header class="topbar">
   <div class="topbar-left">
     <a href="index.html" class="site-title">
-      <span class="title-top">異世界コレクション</span>
-      <span class="title-bottom">isekaicollection</span>
+      <img class="title-chibi" src="assets/images/title/ram.png" width="20" height="34" alt="" draggable="false">
+      <span class="title-text">
+        <span class="title-top">異世界コレクション</span>
+        <span class="title-bottom">isekaicollection</span>
+      </span>
+      <img class="title-chibi" src="assets/images/title/rem.png" width="20" height="34" alt="" draggable="false">
     </a>
   </div>
 
   <nav class="main-nav">
-    <a href="index.html" class="nav-link active">Home</a>
-    <a href="anime.html" class="nav-link">Anime</a>
-    <a href="character.html" class="nav-link">Character</a>
-    <a href="music.html" class="nav-link">Music</a>
-    <a href="games.html" class="nav-link">Game</a>
+    <span class="nav-group nav-group-start">
+      <a href="index.html" class="nav-link active" data-i18n="nav.home">Home</a>
+      <a href="anime.html" class="nav-link" data-i18n="nav.anime">Anime</a>
+    </span>
+    <a href="character.html" class="nav-link" data-i18n="nav.character">Character</a>
+    <span class="nav-group nav-group-end">
+      <a href="music.html" class="nav-link" data-i18n="nav.music">Music</a>
+      <a href="games.html" class="nav-link" data-i18n="nav.game">Game</a>
+    </span>
   </nav>
 
   <div class="topbar-right">
-    <div class="lang-toggle" aria-hidden="true">
+    <div class="lang-toggle">
       <span class="lang-option active">EN</span>
       <span class="lang-divider">|</span>
       <span class="lang-option">JP</span>
@@ -33,7 +50,7 @@
 
     <div class="music-control">
       <button id="musicToggle" class="music-toggle" aria-haspopup="dialog" aria-expanded="false" aria-label="Open Now Playing">
-        <img class="icon-note" src="assets/images/home/Sound.png" alt="">
+        <img class="icon-note" src="assets/images/home/Sound.webp" alt="">
       </button>
 
       <label class="music-switch" aria-label="Play or pause background music">
@@ -114,26 +131,26 @@
 
   <!-- Favorites Carousel -->
   <section class="favorites" aria-label="Featured Favorites">
-    <h2 class="section-label">Favourite</h2>
+    <h2 class="section-label" data-i18n="home.favourite">Favourite</h2>
 
     <div class="carousel">
       <div class="carousel-frame">
         <div class="carousel-track" id="favTrack">
           <div class="carousel-slide" data-category="Anime">
-            <div class="slide-placeholder"><img src="assets/images/home/favorite/anime.jpg"
-          alt="Anime"></div>
+            <a class="slide-placeholder" href="anime.html?id=rezero" draggable="false"><img decoding="async" src="assets/images/home/favorite/anime.jpg"
+          alt="Anime"></a>
           </div>
           <div class="carousel-slide" data-category="Character">
-            <div class="slide-placeholder"><img src="assets/images/home/favorite/char.jpg"
-          alt="Character"></div>
+            <a class="slide-placeholder" href="character.html?id=emilia" draggable="false"><img decoding="async" src="assets/images/home/favorite/char.jpg"
+          alt="Character"></a>
           </div>
           <div class="carousel-slide" data-category="Music">
-            <div class="slide-placeholder"><img src="assets/images/home/favorite/Memento.png"
-          alt="Music"></div>
+            <a class="slide-placeholder" href="music.html?id=nonoc" draggable="false"><img decoding="async" src="assets/images/home/favorite/Memento.webp"
+          alt="Music"></a>
           </div>
           <div class="carousel-slide" data-category="Game">
-            <div class="slide-placeholder"><img src="assets/images/home/favorite/game1.png"
-          alt="Games"></div>
+            <a class="slide-placeholder" href="games.html" draggable="false"><img decoding="async" src="assets/images/home/favorite/game1.webp"
+          alt="Games"></a>
           </div>
         </div>
 
@@ -160,7 +177,7 @@
   <section class="video-banner" aria-label="Featured Video">
     <div class="video-banner__sticky">
       <video class="video-banner__media" autoplay muted loop playsinline poster="assets/videos/home/featured-poster.jpg">
-        <source src="assets/videos/home/featured.mp4" type="video/mp4">
+        <source src="assets/videos/home/featured-web.mp4" type="video/mp4">
       </video>
     </div>
   </section>
@@ -174,37 +191,37 @@
   <!-- Anime Preview -->
   <section class="preview-section anime-section" aria-label="Anime Preview">
     <div class="section-header">
-      <h2>Anime</h2>
+      <h2 data-i18n="page.anime">Anime</h2>
     </div>
    <div class="section-flush side-right">
     <div class="section-panel">
 
     <div class="preview-window">
       <div class="preview-track" id="animeTrack">
-        <a class="preview-item" href="anime.html?id=rezero">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/anime/リゼロ.jpg" alt="Re:ZERO -Starting Life in Another World"></div></div>
-          <p class="preview-title">Re:ZERO -Starting Life in Another World</p>
+        <a class="preview-item" href="anime.html?id=rezero" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/anime/リゼロ.webp" alt="Re:ZERO -Starting Life in Another World" data-i18n-alt="home.anime.rezero"></div></div>
+          <p class="preview-title" data-i18n="home.anime.rezero">Re:ZERO -Starting Life in Another World</p>
         </a>
-        <a class="preview-item" href="anime.html?id=konosuba">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/anime/このすば.jpg" alt="KONOSUBA -God's Blessing on This Wonderful World!"></div></div>
-          <p class="preview-title">KONOSUBA -God's Blessing on This Wonderful World!</p>
+        <a class="preview-item" href="anime.html?id=konosuba" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/anime/このすば.webp" alt="KONOSUBA -God's Blessing on This Wonderful World!" data-i18n-alt="home.anime.konosuba"></div></div>
+          <p class="preview-title" data-i18n="home.anime.konosuba">KONOSUBA -God's Blessing on This Wonderful World!</p>
         </a>
-        <a class="preview-item" href="anime.html?id=tensura">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/anime/転生スライム.jpg" alt="That Time I Got Reincarnated as a Slime"></div></div>
-          <p class="preview-title">That Time I Got Reincarnated as a Slime</p>
+        <a class="preview-item" href="anime.html?id=tensura" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/anime/転生スライム.jpg" alt="That Time I Got Reincarnated as a Slime" data-i18n-alt="home.anime.tensura"></div></div>
+          <p class="preview-title" data-i18n="home.anime.tensura">That Time I Got Reincarnated as a Slime</p>
         </a>
-        <a class="preview-item" href="anime.html?id=danmachi">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/anime/ダンまち.jpg" alt="Is It Wrong to Try to Pick Up Girls in a Dungeon?"></div></div>
-          <p class="preview-title">Is It Wrong to Try to Pick Up Girls in a Dungeon?</p>
+        <a class="preview-item" href="anime.html?id=danmachi" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/anime/ダンまち.webp" alt="Is It Wrong to Try to Pick Up Girls in a Dungeon?" data-i18n-alt="home.anime.danmachi"></div></div>
+          <p class="preview-title" data-i18n="home.anime.danmachi">Is It Wrong to Try to Pick Up Girls in a Dungeon?</p>
         </a>
-        <a class="preview-item" href="anime.html?id=frieren">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/anime/葬送のフリーレン.jpg" alt="Frieren: Beyond Journey's End"></div></div>
-          <p class="preview-title">Frieren: Beyond Journey's End</p>
+        <a class="preview-item" href="anime.html?id=frieren" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/anime/葬送のフリーレン.webp" alt="Frieren: Beyond Journey's End" data-i18n-alt="home.anime.frieren"></div></div>
+          <p class="preview-title" data-i18n="home.anime.frieren">Frieren: Beyond Journey's End</p>
         </a>
       </div>
     </div>
@@ -216,7 +233,7 @@
       </div>
       <a href="anime.html" class="more-pill">
         <span class="pill-plus">+</span>
-        <span class="pill-label">more</span>
+        <span class="pill-label" data-i18n="home.more">more</span>
         <svg class="pill-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <line x1="5" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="10,7 15,12 10,17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -230,37 +247,37 @@
   <!-- Character Preview -->
   <section class="preview-section character-section" aria-label="Character Preview">
     <div class="section-header">
-      <h2>Character</h2>
+      <h2 data-i18n="page.character">Character</h2>
     </div>
    <div class="section-flush side-left">
     <div class="section-panel">
 
     <div class="character-window">
       <div class="character-track" id="charTrack">
-        <a class="char-item" href="character.html?id=emilia">
-          <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/エミリア.jpg" alt="Emilia"></div></div>
-          <p class="char-name">Emilia</p>
+        <a class="char-item" href="character.html?id=emilia" draggable="false">
+          <div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/char/エミリア.jpg" alt="Emilia" data-i18n-alt="home.char.emilia"></div></div>
+          <p class="char-name" data-i18n="home.char.emilia">Emilia</p>
         </a>
-        <a class="char-item" href="character.html?id=zero-two">
-          <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/ゼロツー.jpg" alt="Zero Two"></div></div>
-          <p class="char-name">Zero Two</p>
+        <a class="char-item" href="character.html?id=zero-two" draggable="false">
+          <div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/char/ゼロツー.webp" alt="Zero Two" data-i18n-alt="home.char.zerotwo"></div></div>
+          <p class="char-name" data-i18n="home.char.zerotwo">Zero Two</p>
         </a>
-        <a class="char-item" href="character.html?id=rimuru">
-          <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/リムル.jpg" alt="Rimuru"></div></div>
-          <p class="char-name">Rimuru</p>
+        <a class="char-item" href="character.html?id=rimuru" draggable="false">
+          <div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/char/リムル.webp" alt="Rimuru" data-i18n-alt="home.char.rimuru"></div></div>
+          <p class="char-name" data-i18n="home.char.rimuru">Rimuru</p>
         </a>
-        <a class="char-item" href="character.html?id=ram">
-          <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/ラム.jpg" alt="Ram"></div></div>
-          <p class="char-name">Ram</p>
+        <a class="char-item" href="character.html?id=ram" draggable="false">
+          <div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/char/ラム.webp" alt="Ram" data-i18n-alt="home.char.ram"></div></div>
+          <p class="char-name" data-i18n="home.char.ram">Ram</p>
         </a>
-        <a class="char-item" href="character.html?id=frieren">
-          <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/フリーレン.jpg" alt="Frieren"></div></div>
-          <p class="char-name">Frieren</p>
+        <a class="char-item" href="character.html?id=frieren" draggable="false">
+          <div class="char-frame"><div class="char-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/char/フリーレン.jpg" alt="Frieren" data-i18n-alt="home.char.frieren"></div></div>
+          <p class="char-name" data-i18n="home.char.frieren">Frieren</p>
         </a>
       </div>
     </div>
@@ -268,7 +285,7 @@
     <div class="preview-footer character-footer">
       <a href="character.html" class="more-pill">
         <span class="pill-plus">+</span>
-        <span class="pill-label">more</span>
+        <span class="pill-label" data-i18n="home.more">more</span>
         <svg class="pill-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <line x1="5" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="10,7 15,12 10,17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -282,52 +299,52 @@
   <!-- Music Preview -->
   <section class="preview-section music-section" aria-label="Music Preview">
     <div class="section-header">
-      <h2>Music</h2>
+      <h2 data-i18n="page.music">Music</h2>
     </div>
    <div class="section-flush side-right">
     <div class="section-panel">
 
     <div class="music-window">
       <div class="music-track" id="musicTrack">
-        <div class="music-item" data-audio="assets/audio/home/Memento(cut).mp3">
+        <a class="music-item" href="music.html?id=nonoc" data-audio="assets/audio/home/Memento(cut).mp3" draggable="false">
           <div class="music-frame-wrap">
             <canvas class="music-viz" width="240" height="240"></canvas>
-            <div class="music-frame"><div class="music-placeholder"><img
-              src="assets/images/home/music/nonoc.jpg" alt="nonoc"></div></div>
+            <div class="music-frame"><div class="music-placeholder"><img loading="lazy" decoding="async"
+              src="assets/images/home/music/nonoc.webp" alt="nonoc"></div></div>
           </div>
-          <p class="music-name">Re:ZERO Music ft. nonoc</p>
-        </div>
-        <div class="music-item" data-audio="assets/audio/home/STYX%20HELIX(cut).mp3">
+          <p class="music-name">nonoc</p>
+        </a>
+        <a class="music-item" href="music.html?id=myth-and-roid" data-audio="assets/audio/home/STYX%20HELIX(cut).mp3" draggable="false">
           <div class="music-frame-wrap">
             <canvas class="music-viz" width="240" height="240"></canvas>
-            <div class="music-frame"><div class="music-placeholder"><img
-              src="assets/images/home/music/myth&amp;roid.jpg" alt="MYTH & ROID"></div></div>
+            <div class="music-frame"><div class="music-placeholder"><img loading="lazy" decoding="async"
+              src="assets/images/home/music/myth&amp;roid.webp" alt="MYTH & ROID"></div></div>
           </div>
-          <p class="music-name">Re:ZERO Music ft. MYTH &amp; ROID</p>
-        </div>
-        <div class="music-item" data-audio="assets/audio/home/Stay%20Alive%20(cut).mp3">
+          <p class="music-name">MYTH &amp; ROID</p>
+        </a>
+        <a class="music-item" href="music.html?id=rie-takahashi" data-audio="assets/audio/home/Stay%20Alive%20(cut).mp3" draggable="false">
           <div class="music-frame-wrap">
             <canvas class="music-viz" width="240" height="240"></canvas>
-            <div class="music-frame"><div class="music-placeholder"><img
-              src="assets/images/home/music/rie.jpg" alt="Rie Takahashi"></div></div>
+            <div class="music-frame"><div class="music-placeholder"><img loading="lazy" decoding="async"
+              src="assets/images/home/music/rie.webp" alt="Rie Takahashi" data-i18n-alt="home.music.rie"></div></div>
           </div>
-          <p class="music-name">Rie Takahashi</p>
-        </div>
-        <div class="music-item" data-audio="assets/audio/home/Cinderella%20Step(cut).mp3">
+          <p class="music-name" data-i18n="home.music.rie">Rie Takahashi</p>
+        </a>
+        <a class="music-item" href="music.html?id=daoko" data-audio="assets/audio/home/Cinderella%20Step(cut).mp3" draggable="false">
           <div class="music-frame-wrap">
             <canvas class="music-viz" width="240" height="240"></canvas>
-            <div class="music-frame"><div class="music-placeholder"><img
+            <div class="music-frame"><div class="music-placeholder"><img loading="lazy" decoding="async"
               src="assets/images/home/music/daoko.jpg" alt="Daoko"></div></div>
           </div>
           <p class="music-name">Daoko</p>
-        </div>
+        </a>
       </div>
     </div>
 
     <div class="preview-footer music-footer">
       <a href="music.html" class="more-pill">
         <span class="pill-plus">+</span>
-        <span class="pill-label">more</span>
+        <span class="pill-label" data-i18n="home.more">more</span>
         <svg class="pill-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <line x1="5" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="10,7 15,12 10,17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -341,38 +358,38 @@
   <!-- Game Preview -->
   <section class="preview-section game-section" aria-label="Game Preview">
     <div class="section-header">
-      <h2>Game</h2>
+      <h2 data-i18n="page.game">Game</h2>
     </div>
    <div class="section-flush side-left">
     <div class="section-panel">
 
     <div class="preview-window">
       <div class="preview-track" id="gameTrack">
-        <div class="preview-item">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/games/BlueArchive.png" alt="Blue Archive"></div></div>
-          <p class="preview-title">Blue Archive</p>
-        </div>
-        <div class="preview-item">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/games/NierAutomata.jpg" alt="NieR: Automata"></div></div>
-          <p class="preview-title">NieR: Automata</p>
-        </div>
-        <div class="preview-item">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/games/StellarBlade.jpg" alt="Stellar Blade"></div></div>
+        <a class="preview-item" href="games.html?id=blue-archive" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/games/BlueArchive.webp" alt="Blue Archive" data-i18n-alt="home.game.bluearchive"></div></div>
+          <p class="preview-title" data-i18n="home.game.bluearchive">Blue Archive</p>
+        </a>
+        <a class="preview-item" href="games.html?id=nier-automata" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/games/NierAutomata.webp" alt="NieR: Automata" data-i18n-alt="home.game.nier"></div></div>
+          <p class="preview-title" data-i18n="home.game.nier">NieR: Automata</p>
+        </a>
+        <a class="preview-item" href="games.html?id=stellar-blade" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/games/StellarBlade.webp" alt="Stellar Blade"></div></div>
           <p class="preview-title">Stellar Blade</p>
-        </div>
-        <div class="preview-item">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/games/GenshinImpact1.jpg" alt="Genshin Impact"></div></div>
-          <p class="preview-title">Genshin Impact</p>
-        </div>
-        <div class="preview-item">
-          <div class="preview-card"><div class="card-placeholder"><img
-            src="assets/images/home/games/PokemonZA.png" alt="Pokemon Legends: Z-A"></div></div>
-          <p class="preview-title">Pokemon Legends: Z-A</p>
-        </div>
+        </a>
+        <a class="preview-item" href="games.html?id=genshin-impact" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/games/GenshinImpact1.webp" alt="Genshin Impact" data-i18n-alt="home.game.genshin"></div></div>
+          <p class="preview-title" data-i18n="home.game.genshin">Genshin Impact</p>
+        </a>
+        <a class="preview-item" href="games.html?id=pokemon-za" draggable="false">
+          <div class="preview-card"><div class="card-placeholder"><img loading="lazy" decoding="async" draggable="false"
+            src="assets/images/home/games/PokemonZA.webp" alt="Pokemon Legends: Z-A" data-i18n-alt="home.game.pokemon"></div></div>
+          <p class="preview-title" data-i18n="home.game.pokemon">Pokemon Legends: Z-A</p>
+        </a>
       </div>
     </div>
 
@@ -383,7 +400,7 @@
       </div>
       <a href="games.html" class="more-pill">
         <span class="pill-plus">+</span>
-        <span class="pill-label">more</span>
+        <span class="pill-label" data-i18n="home.more">more</span>
         <svg class="pill-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <line x1="5" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="10,7 15,12 10,17" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -398,12 +415,13 @@
 
 </main>
 
-<button id="backToTop" class="back-to-top" aria-label="Back to top">
+<button id="backToTop" class="back-to-top" aria-label="Back to top" data-i18n-aria="aria.backToTop">
   <span class="icon-totop-flip">
-    <img class="icon-totop" src="assets/images/home/pyroxene.png" alt="Back to top">
+    <img loading="lazy" decoding="async" class="icon-totop" src="assets/images/home/pyroxene.png" alt="Back to top">
   </span>
 </button>
 
-<script src="js/main.js?v=9"></script>
+<script src="js/i18n.js?v=10"></script>
+<script src="js/main.js?v=34"></script>
 </body>
 </html>

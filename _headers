@@ -1,0 +1,18 @@
+# Netlify reads this file to decide how long visitors' browsers may keep
+# each file before asking Netlify again. Without it, every visit re-checks
+# every file, and each check is a round trip to Netlify.
+
+# Images, audio and video: keep for a day without asking, then reuse the
+# saved copy while quietly checking for a newer one in the background.
+# (If you replace a file but keep its name, returning visitors may see the
+# old one until the next day — give replacements a new name to avoid that.)
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Scripts and styles: reuse the saved copy instantly and check for a newer
+# one in the background. The ?v= numbers in the pages force a fresh copy
+# whenever a file actually changes.
+/js/*
+  Cache-Control: public, max-age=0, stale-while-revalidate=604800
+/css/*
+  Cache-Control: public, max-age=0, stale-while-revalidate=604800
