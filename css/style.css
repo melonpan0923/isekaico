@@ -9,6 +9,44 @@
   --border: #e6e6e6;
   --placeholder-bg: #f2f2f5;
   --frame-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+
+  /* Isekai sparkle dot pattern — shared by character.html's .character-page
+     and the home page's Favourite/Anime/Character/Music/Game backgrounds
+     (see .sparkle-bg below) so all of them scatter the exact same dots
+     instead of drifting out of sync if edited separately. Purple = site
+     accent, pink = Zero Two/Ram's hair, light blue = Rimuru's hair, silver =
+     Frieren/Emilia's hair — one dot color per character palette rather than
+     just the two brand colors. */
+  --sparkle-dots: radial-gradient(circle at 8% 20%, rgba(124, 109, 240, 0.35) 0, transparent 2%),
+    radial-gradient(circle at 22% 65%, rgba(255, 111, 165, 0.3) 0, transparent 2%),
+    radial-gradient(circle at 40% 15%, rgba(124, 109, 240, 0.3) 0, transparent 1.5%),
+    radial-gradient(circle at 65% 30%, rgba(255, 111, 165, 0.28) 0, transparent 1.5%),
+    radial-gradient(circle at 80% 75%, rgba(124, 109, 240, 0.32) 0, transparent 2%),
+    radial-gradient(circle at 92% 40%, rgba(255, 111, 165, 0.3) 0, transparent 1.5%),
+    radial-gradient(circle at 55% 85%, rgba(124, 109, 240, 0.3) 0, transparent 1.5%),
+    radial-gradient(circle at 30% 90%, rgba(255, 111, 165, 0.25) 0, transparent 1.5%),
+    radial-gradient(circle at 15% 45%, rgba(110, 200, 235, 0.32) 0, transparent 2%),
+    radial-gradient(circle at 50% 55%, rgba(110, 200, 235, 0.28) 0, transparent 1.5%),
+    radial-gradient(circle at 85% 10%, rgba(110, 200, 235, 0.3) 0, transparent 1.5%),
+    radial-gradient(circle at 5% 60%, rgba(205, 205, 218, 0.4) 0, transparent 2%),
+    radial-gradient(circle at 45% 80%, rgba(205, 205, 218, 0.4) 0, transparent 1.5%),
+    radial-gradient(circle at 75% 50%, rgba(205, 205, 218, 0.4) 0, transparent 2%);
+}
+
+/* Shared by .character-page and the home page's Favourite/Anime/Character/
+   Music/Game section backgrounds. A fixed-height tile repeated vertically
+   (rather than one pattern stretched to 100% of the element) keeps the
+   sparkle density constant no matter how tall the element gets — a plain
+   "100% 100%" stretch thins the dots out to almost nothing on a very tall
+   section. */
+.sparkle-bg,
+.character-page,
+.favorites,
+.preview-section {
+  background-color: #f9f8ff;
+  background-image: var(--sparkle-dots);
+  background-size: 100% 900px;
+  background-repeat: repeat-y;
 }
 
 /* ===== Reset ===== */
@@ -61,6 +99,9 @@ h2 {
 
 /* ===== Top Bar ===== */
 .topbar {
+  position: relative;
+  z-index: 10;
+  background: var(--bg);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -226,6 +267,18 @@ h2 {
   z-index: 500;
   background: rgba(8, 9, 13, 0.5);
   animation: np-in 0.2s ease;
+  /* Centers the art + controls as a group instead of anchoring them to a
+     fixed "40% + fixed offsets" position — that old anchor didn't account
+     for the viewport's actual height, so on a short enough window the
+     controls got pushed past the bottom edge and clipped off-screen.
+     overflow-y here is a safety net: if content is ever taller than a
+     very short viewport, it scrolls instead of clipping. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .now-playing-view[hidden] {
@@ -249,16 +302,22 @@ h2 {
   right: 1.5rem;
   width: 2.25rem;
   height: 2.25rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.8);
-  transition: color 0.2s ease, transform 0.15s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
   z-index: 2;
 }
 
+.np-close svg {
+  stroke-width: 4;
+}
+
 .np-close:hover {
-  color: #ffffff;
+  color: var(--accent);
+  background: #ffffff;
   transform: scale(1.1);
 }
 
@@ -267,17 +326,12 @@ h2 {
   outline-offset: 3px;
 }
 
-/* Art is pinned 10% above the screen's true vertical center; everything
-   below it is positioned relative to that same anchor, not the full block,
-   so the group stays put regardless of how tall the content below grows. */
 .player-art-wrap {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  left: 50%;
-  top: 40%;
-  transform: translate(-50%, -50%);
   width: 9rem;
   aspect-ratio: 1 / 1;
+  flex-shrink: 0;
 }
 
 .player-art {
@@ -298,12 +352,11 @@ h2 {
 }
 
 .np-below {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  left: 50%;
-  top: calc(40% + 4.5rem + 1.4rem);
-  transform: translateX(-50%);
   width: min(19rem, 88vw);
+  margin-top: 1.4rem;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -478,7 +531,7 @@ h2 {
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 40vh;
+  height: 60vh;
   z-index: 1;
 }
 
@@ -502,20 +555,54 @@ h2 {
 
 /* ===== Favorites Carousel ===== */
 .favorites {
+  position: relative;
+  z-index: 2;
+  border-radius: 0 0 20px 20px;
+  /* Small overshoot so this section's own box always fully covers the
+     video sitting behind it on the right edge — same fix as
+     .anime-section, applied here for the same reason (this outer box is
+     separate from .carousel-frame's own overshoot). */
+  width: calc(100% + 2px);
+  margin-left: -1px;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: clamp(1.5rem, 4vw, 3rem) 0;
-  gap: 1rem;
+  /* ~584px total. .video-banner's top overlap (--vb-top-overlap) is capped
+     to stay under this, so the video still can't poke out above Favourite —
+     it's just a shorter reveal now, since this panel is shorter. */
+  padding-bottom: 114px;
+  gap: 0.9rem;
   overflow-x: hidden;
 }
 
 .section-label {
-  align-self: flex-start;
-  margin-left: 5vw;
+  align-self: center;
   font-size: 1.4rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+  display: inline-block;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  border-bottom: 3px solid transparent;
+  transition: border-bottom-color 0.4s ease;
+  transition-delay: 0.3s;
+}
+
+.section-label.revealed {
+  border-bottom-color: var(--accent);
+}
+
+.section-label .letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.section-label.revealed .letter {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .carousel {
@@ -525,8 +612,9 @@ h2 {
 /* Full-bleed breakout: reaches the true edges of the screen regardless of any parent padding */
 .carousel-frame {
   position: relative;
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
+  /* Same small overshoot as .section-flush / .video-banner__sticky. */
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
   overflow: hidden;
 }
 
@@ -633,15 +721,181 @@ h2 {
   transform: scale(1.2);
 }
 
-/* ===== Preview Sections (Anime / Character) ===== */
+/* ===== Video Banner ===== */
+/* Scroll-pinned cinematic panel between Favourite and Anime. The outer
+   section is much taller than one screen, so the inner panel (position:
+   sticky) stays glued to the top of the viewport for the extra scroll
+   distance, then releases into the section below once .video-banner ends.
+   --vb-panel is the pinned height; the outer section is a multiple of it —
+   raise the multiplier for a longer hold, lower it for a shorter one.
+
+   Both edges overlap (negative margin-top and margin-bottom), so
+   Favourite's panel slides away to reveal the already-pinned video on
+   entry, and Anime's panel slides over to cover it again on exit — a
+   smooth hold-and-reveal both directions instead of an instant cut.
+
+   --vb-top-overlap, --vb-bottom-overlap, and --vb-hold are fractions of
+   --vb-panel (like WIT's own overlaps are fractions of their screen
+   height), so the reveal/hold/cover durations scale with the visitor's
+   actual screen instead of staying flat pixels — same proportions for
+   everyone, universal across devices. 0.2326 = 200÷860, so this keeps the
+   exact same 200px look on an 860px-tall screen while scaling correctly
+   everywhere else. Total height = the video panel itself + top overlap +
+   hold + bottom overlap. */
+.video-banner {
+  --vb-panel: min(100vh, 860px);
+  --vb-top-overlap: calc(var(--vb-panel) * 0.6);
+  --vb-bottom-overlap: calc(var(--vb-panel) * 1.2);
+  --vb-hold: calc(var(--vb-panel) * 0.2326);
+  position: relative;
+  z-index: 1;
+  height: calc(var(--vb-panel) + var(--vb-top-overlap) + var(--vb-hold) + var(--vb-bottom-overlap));
+  margin-top: calc(var(--vb-top-overlap) * -1);
+  margin-bottom: calc(var(--vb-bottom-overlap) * -1);
+}
+
+.video-banner__sticky {
+  position: sticky;
+  top: 0;
+  /* Same small overshoot as .section-flush — guards the right edge
+     against Windows' classic-scrollbar 100vw mismatch. No transform here
+     (a prior attempt added translateZ to force GPU compositing, but that
+     turned out to make screen-recording capture artifacts more likely, so
+     it's just the plain overshoot now). */
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
+  height: var(--vb-panel);
+  overflow: hidden;
+  background: var(--gradient);
+}
+
+.video-banner__media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ===== Preview Sections (Anime / Character / Music / Game) ===== */
+/* One shared measurement drives both the horizontal purple gutter beside
+   each flush panel and the vertical purple gap between stacked panels, so
+   the two read as the same size. */
+:root {
+  --panel-gutter: 5vw;
+}
+
+/* Wraps Anime/Character/Music/Game together so the video banner's bottom
+   overlap can safely draw on their *combined* height instead of just
+   Anime's alone — Anime by itself (~523px) barely clears a large overlap,
+   but the four sections together are 2000px+, giving real headroom without
+   padding any of them out with blank space. Needs its own stacking
+   position (not just static) so z-index above .video-banner actually
+   takes effect, and the small overshoot guards the right edge the same
+   way .carousel-frame/.video-banner__sticky/.section-flush do. */
+.preview-sections-wrap {
+  position: relative;
+  z-index: 2;
+  width: calc(100% + 2px);
+  margin-left: -1px;
+}
+
+.anime-section {
+  border-radius: 20px 20px 0 0;
+}
+
 .preview-section {
+  padding: calc(var(--panel-gutter) / 2) 0;
+}
+
+/* Game is the last section, so its background is trimmed flush to its
+   panel's bottom instead of leaving a trailing gutter after it — nothing
+   extends past the last panel at the very bottom of the page. Anime no
+   longer needs the equivalent top trim now that its title sits above the
+   panel (see the moved .section-header markup) and needs its own normal
+   breathing room below the white hero section. */
+.game-section {
+  padding-bottom: 0;
+}
+
+/* Full-bleed row that aligns its white panel to one screen edge, so the
+   panel touches the edge exactly while the opposite side shows purple. */
+.section-flush {
+  /* +2px / -1px beyond a plain 100vw breakout: on Windows, a classic
+     (non-overlay) scrollbar makes 100vw slightly wider than the page's
+     actual visible area, which can leave a hairline gap at the right edge
+     where whatever's behind (the video banner) peeks through. This small
+     overshoot guarantees the panel always fully covers it. */
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
+  display: flex;
+}
+
+.section-flush.side-right {
+  justify-content: flex-end;
+}
+
+.section-flush.side-left {
+  justify-content: flex-start;
+}
+
+.section-panel {
+  width: calc(100% - var(--panel-gutter));
+  background: var(--bg);
   padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+}
+
+.side-right .section-panel {
+  border-radius: 20px 0 0 20px;
+}
+
+.side-left .section-panel {
+  border-radius: 0 20px 20px 0;
+}
+
+/* Game's panel is flush against the very bottom of the page (nothing sits
+   below it), so its bottom-right stays sharp instead of rounded. Anime no
+   longer needs the equivalent top-left trim now that its title sits above
+   the panel with normal breathing room, rather than the panel itself
+   touching the top of the page. */
+.game-section .section-panel {
+  border-radius: 0 20px 0 0;
 }
 
 .section-header {
   margin-bottom: 1.2rem;
+  text-align: center;
 }
 
+.section-header h2 {
+  display: inline-block;
+  white-space: nowrap;
+  padding-bottom: 4px;
+  border-bottom: 3px solid transparent;
+  transition: border-bottom-color 0.4s ease;
+  transition-delay: 0.3s;
+}
+
+.section-header.revealed h2 {
+  border-bottom-color: var(--accent);
+}
+
+.section-header h2 .letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.section-header.revealed h2 .letter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Unlike Character/Music's circle group (which shrinks to fit and
+   visibly centers on its own panel's off-center width), this track fills
+   the entire panel width edge to edge — for Anime specifically, its
+   negative-margin bleed on both sides happens to land the grid close to
+   the true page center already, with no correction needed. */
 .preview-window {
   overflow: hidden;
   width: 100%;
@@ -649,15 +903,48 @@ h2 {
   margin: -1rem -1.5rem -0.25rem;
 }
 
+/* Game is the mirror image of Anime (flush left instead of right), but the
+   correction isn't symmetric: the bleed margin shifts the track the same
+   direction regardless of which side the panel is flush to, so for Anime
+   it happens to cancel most of the panel's own off-center offset, while
+   for Game it compounds it instead — measured ~66px off true center
+   without this. */
+.game-section .preview-window {
+  padding-left: calc(4.5rem + var(--panel-gutter));
+}
+
 .preview-track {
   display: flex;
   gap: clamp(0.75rem, 2vw, 1.5rem);
   transition: transform 0.4s ease;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Blocks the browser's native "ghost image" drag so it doesn't fight the
+   custom pointer-drag in js/main.js (initScrubber) — done here rather than
+   with preventDefault() in the pointerdown handler, since that also
+   suppresses the click a card's own link needs (Anime's cards link to
+   anime.html). */
+.preview-track img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* While dragging, block the card hover tilt (its own 0.3s transition)
+   from firing as the pointer crosses cards — it was fighting the drag
+   for the same frames and reading as jittery. */
+.preview-track.track-dragging .preview-card {
+  pointer-events: none;
 }
 
 .preview-item {
   flex: 0 0 calc((100% - 2 * clamp(0.75rem, 2vw, 1.5rem)) / 3);
   min-width: 0;
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 
 .preview-card {
@@ -673,7 +960,7 @@ h2 {
 }
 
 .preview-title {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text);
@@ -693,12 +980,25 @@ h2 {
   color: var(--text-soft);
 }
 
+/* Row layout (not stacked) so the "+more" pill lands at the same height
+   whether or not a scrub bar sits beside it — Character/Music (no scrub
+   bar) would otherwise sit noticeably higher than Anime/Game. */
 .preview-footer {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.9rem;
   margin-top: 1.3rem;
+}
+
+/* Anime and Music sit flush against the true right edge of the screen,
+   while Character and Game's panels stop one gutter short of it (their own
+   purple gutter is on the right instead). Right-aligning within each panel
+   then lands the pill a full gutter-width further right for Anime/Music —
+   inset it here so all four "+more" pills land in the same spot. */
+.anime-section .preview-footer,
+.music-section .preview-footer {
+  padding-right: var(--panel-gutter);
 }
 
 /* Custom gradient scrub bar (replaces native range input) */
@@ -769,12 +1069,26 @@ h2 {
   position: relative;
 }
 
+/* Same page-center correction as Anime/Game's .preview-window: Character's
+   panel is flush left, so its circle group needs the extra inset on the
+   left (the side bordering the true screen edge) to land on the page's
+   real center instead of the panel's own, off-center one. */
+.character-section .character-window {
+  padding-left: var(--panel-gutter);
+}
+
+/* Trimmed from the original "+ 1cm" — with 5 frames (one more than Music's
+   4) plus the page-centering inset above, the old gap tipped into wrapping
+   a lone 5th circle onto its own row on common laptop widths (~1024px).
+   This keeps a visible gap at every width while leaving enough margin for
+   all 5 to stay on one line down to ~820px, where the layout's mobile
+   breakpoints take over anyway. */
 .character-track {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: calc(clamp(1rem, 3vw, 2.5rem) + 1cm);
+  gap: calc(clamp(1rem, 3vw, 2.5rem) + 0.2cm);
   padding: 0.5rem 0;
 }
 
@@ -802,7 +1116,7 @@ h2 {
 }
 
 .char-name {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text);
@@ -826,6 +1140,13 @@ h2 {
 /* ===== Music Section (sizing copied from Character section) ===== */
 .music-window {
   position: relative;
+}
+
+/* Same page-center correction as Anime's .preview-window: Music's panel is
+   flush right, so the extra inset goes on the right (the side bordering
+   the true screen edge). */
+.music-section .music-window {
+  padding-right: var(--panel-gutter);
 }
 
 .music-track {
@@ -880,7 +1201,7 @@ h2 {
 .music-name {
   position: relative;
   z-index: 2;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   min-height: 2.4em;
   font-size: 0.85rem;
   font-weight: 600;
@@ -909,21 +1230,746 @@ h2 {
   margin-top: 1.5rem;
 }
 
-/* ===== Section panel color (#333333) ===== */
-.anime-section,
-.music-section {
-  background: rgba(51, 51, 51, 1);
+/* ===== Character Detail Page (character.html) ===== */
+/* The sparkle dot background comes from .sparkle-bg (see :root/.sparkle-bg
+   near the top of this file) — this section is just the page-specific
+   hero/select/detail layout on top of it. */
+.character-hero {
+  text-align: center;
+  padding: clamp(1rem, 3vw, 1.75rem) 5vw 0.5rem;
 }
 
-.anime-section .section-header h2,
-.anime-section .preview-title,
-.music-section .section-header h2,
-.music-section .music-name {
+/* inline-flex (not inline-block) so this wrapper sizes exactly to
+   .title-content with no extra height — an inline-block wrapping another
+   inline-block picks up invisible baseline-alignment spacing, which made
+   this box (and so .title-cover, which spans its full height) render a
+   couple pixels taller than the actual text/gradient box inside it. */
+.character-hero-title {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+/* The real gradient tag + text. Starts fully transparent (opacity 0) and
+   .title-cover below starts at width 0 — both driven by JS now
+   (js/character-page.js, look for BUILD_SECONDS/HOLD_SECONDS/WIPE_SECONDS)
+   instead of hand-written keyframe percentages, so the timing is just 3
+   numbers in seconds to edit, not a percentage-of-total-duration
+   calculation. Using opacity here (rather than a same-colored mask
+   rectangle) means whatever actually sits behind the title — including
+   the sparkle background — simply shows through at rest, with nothing to
+   color-match. */
+.character-hero-title .title-content {
+  position: relative;
+  z-index: 1;
   display: inline-block;
-  color: #222222;
-  background: #ffffff;
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  padding: 0.4em 1.4em 0.4em 1em;
+  background: linear-gradient(90deg, rgba(207, 194, 255, 1) 0%, rgba(207, 194, 255, 1) 60%, rgba(207, 194, 255, 0) 100%);
+  opacity: 0;
+}
+
+/* The solid purple "forming" block — see js/character-page.js for the
+   build/hold/wipe animation itself. */
+.character-hero-title .title-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: rgba(207, 194, 255, 1);
+  z-index: 2;
+}
+
+/* Extra top padding here (vs. the hero's own trimmed bottom padding) is
+   the room freed up for the panel — moving space from above the title to
+   below it, rather than adding height overall. */
+.char-select {
+  display: flex;
+  justify-content: center;
+  padding: 1.75rem 5vw clamp(1.5rem, 4vw, 2.5rem);
+}
+
+/* gap: 30px (was a clamp() capped at 20px) — the track itself isn't
+   width-constrained (no max-width here), so it just grows to fit the
+   wider spacing automatically; flex-wrap: wrap above still protects
+   narrow screens from overflowing instead of needing a fixed width. */
+.char-select-track {
+  background: var(--bg);
+  border-radius: 40px;
+  box-shadow: var(--frame-shadow);
+  padding: 0.9rem clamp(1.25rem, 3vw, 2.5rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+}
+
+.char-select-item .char-frame {
+  outline: 1.5px solid rgba(0, 0, 0, 0.18);
+}
+
+.char-select-item.active .char-frame {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+  transform: scale(1.06);
+}
+
+.char-select-item.active .char-name {
+  color: var(--accent);
+}
+
+/* Soft glow behind the character art — shares the media's grid cell (same
+   technique as the media/info overlap) but sits at the lowest z-index so
+   both the art and the text render above it. */
+.character-glow {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  z-index: 0;
+  width: min(420px, 90%);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 109, 240, 0.22), transparent 70%);
+  align-self: center;
+  justify-self: start;
+  margin-left: -5%;
+}
+
+/* Grid instead of flex so the info column's left edge is pinned to a fixed
+   40% of the page width no matter how wide any given character's art is —
+   with flex, the info column's position shifted with each image's width,
+   which looked inconsistent switching between characters. .character-detail-media
+   spans both columns (so it can render at its own natural size, unclipped)
+   while .character-detail-info is placed to start exactly at the col2 line;
+   the two stack in the same grid row/z-index order, so art wider than 40%
+   sits behind the text rather than pushing it over. */
+.character-detail {
+  display: grid;
+  grid-template-columns: 40% 1fr;
+  align-items: start;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) 5vw clamp(2.5rem, 6vw, 4rem);
+}
+
+.character-detail-media {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: start;
+  z-index: 1;
+  width: clamp(220px, 32vw, 380px);
+  aspect-ratio: 3 / 4;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  outline: 1.5px solid rgba(0, 0, 0, 0.18);
+  outline-offset: -1.5px;
+  box-shadow: var(--frame-shadow);
+  background: var(--placeholder-bg);
+}
+
+.character-detail-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Cutout variant: a transparent full-body PNG floating directly on the
+   page (no card frame), for characters with dedicated cutout art — the
+   frieren-anime.jp look. aspect-ratio is set inline per character to match
+   its source image exactly, so percentage-positioned effects below line up
+   with the pixels they were measured against.
+
+   Fixed HEIGHT with width left to auto (derived from aspect-ratio) rather
+   than the usual fixed-width/derived-height — cutout art varies wildly in
+   its own aspect ratio (a tight full-body crop vs. a narrow sliver), and
+   deriving height from a fixed width blows narrow crops up to an enormous
+   height. Fixing height instead keeps every character the same size on the
+   page regardless of how its source file happens to be cropped. */
+.character-detail-media.cutout {
+  width: auto;
+  height: clamp(320px, 46vw, 520px);
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: none;
+  overflow: visible;
+}
+
+.character-detail-media.cutout .character-cutout-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.18));
+}
+
+/* Opt-in per character (the `float: true` flag in characters.js adds this
+   class) — most cutout art just sits still; only characters that ask for
+   it get the idle bob. */
+.character-detail-media.cutout.floating .character-cutout-img {
+  animation: character-cutout-float 3.2s ease-in-out infinite;
+}
+
+/* Width comes from an inline style (per-character, set in JS) which always
+   wins regardless of selector specificity — but height needs the extra
+   class here (.character-detail-media .character-effect-img) to out-rank
+   the plain ".character-detail-media img { height: 100% }" rule above;
+   without it that rule wins and stretches the effect image to fill the
+   whole box instead of floating at its own natural height. */
+.character-detail-media .character-effect-img {
+  position: absolute;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 6px 16px rgba(80, 140, 255, 0.45));
+  animation: character-effect-float 3.2s ease-in-out infinite;
+}
+
+@keyframes character-effect-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+@keyframes character-cutout-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(var(--cutout-float-amplitude, -6px));
+  }
+}
+
+.character-detail-info {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  z-index: 2;
+  padding-top: 0.5rem;
+}
+
+/* Two columns, filled in source order — Name/CV, Age/Birthday, then
+   Height/Weight. */
+/* Content-sized columns (not repeat(2, 1fr), which split the info column
+   50/50 regardless of how short the actual label/value text is) — that
+   left a wide gap of empty leftover space between e.g. "Emilia" and "CV:"
+   on top of the explicit column-gap. Sizing each column to its own
+   content instead puts CV/Height/Weight right up against Name/Age/
+   Birthday, with just the gap between them. */
+.character-stat-grid {
+  display: grid;
+  /* Column 1 (Name/Age/Birthday) is a fixed width instead of max-content,
+     so column 2 (CV/Height/Weight) always starts at the same x position
+     regardless of how long a given character's birthday text is. 13rem
+     comfortably fits the longest line seen so far ("Birthday: September
+     23" at ~11.5rem) with room to spare. Column 2 stays max-content since
+     its own values (e.g. Ram's sentence-length weight) are allowed to run
+     wider without affecting column 1's position. */
+  grid-template-columns: 13rem max-content;
+  column-gap: 2.5rem;
+  row-gap: 0.5rem;
+  margin: 0.9rem 0 1.4rem;
+}
+
+.character-stat-label {
+  font-weight: 700;
+  margin-right: 0.35em;
+}
+
+.character-stat-value {
+  color: var(--text);
+}
+
+/* Narrower than the full info column (was 40em, stretching lines all the
+   way past where the compact stat grid above them ends) — shorter lines
+   read as a tidier block that doesn't run further right than the rest of
+   the panel's content. */
+.character-detail-bio {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text);
+  max-width: 30em;
+}
+
+@media (max-width: 700px) {
+  .character-detail {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .character-detail-media {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: clamp(220px, 60vw, 320px);
+  }
+
+  .character-detail-info {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .character-stat-grid {
+    justify-content: center;
+  }
+}
+
+/* ===== Anime Detail Page (anime.html) ===== */
+/* Same sparkle background + hero title as character.html (.sparkle-bg,
+   .character-hero) — just a different content card below: a cover+title+
+   video hero panel, then a separate Summary panel underneath. This wrapper
+   still caps at 1100px (see .anime-hero-inner/.anime-summary-inner) even
+   though the two panels themselves now break full-bleed — it's what keeps
+   the "Summary" heading between them centered in the same column. */
+.anime-detail {
+  max-width: 1100px;
+  margin: 0 auto;
+  /* Top padding matches .char-select's own (character.html) so the "Anime"
+     title sits the same distance above its panel as "Character" does
+     above its roster — it had none before, which read as too tight/
+     unaligned next to the character page. No bottom padding: the Summary
+     panel is the last thing on the page and should run flush to its true
+     end, not leave a strip of sparkle background showing below it. */
+  padding: 1.75rem 5vw 0;
+}
+
+/* Full-bleed breakout (same technique as .carousel-frame/.section-flush —
+   "reaches the true edges of the screen regardless of any parent
+   padding") so both panels reach edge to edge like the Favourite
+   carousel's own frame, instead of sitting in the narrower centered
+   column .anime-detail itself uses. The actual grid/text stays capped at
+   a sane reading width via .anime-hero-inner/.anime-summary-inner below —
+   otherwise the cover and video would balloon on an ultra-wide screen. */
+.anime-hero-panel {
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
+  background: var(--bg);
+  border-radius: 1.5rem;
+  box-shadow: var(--frame-shadow);
+  padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+  margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+/* Flex + justify-content: center (not a grid splitting the full width into
+   a 30/70 column pair) — the video column doesn't stretch to fill
+   whatever's left over (its own width is a real fixed size computed in
+   js/anime-page.js, matching the cover's height at 16:9), so a 1fr grid
+   column just left a strip of dead space to its right. Centering the pair
+   as a unit instead keeps the cover from reading as pinned to the far
+   left with the whole rest of the panel behind it. */
+.anime-hero-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.anime-cover {
+  flex: 0 0 min(30%, 330px);
+  /* Fallback only — every current anime sets its own posterAspect in
+     js/animes.js (inline style, takes precedence), matching that
+     specific poster's real proportions so it never gets cropped. This is
+     just what a future entry gets if that field is left out. */
+  aspect-ratio: 2 / 3;
+  /* Sharp corners (was 1rem) per request. */
+  border-radius: 0;
+  overflow: hidden;
+  outline: 1.5px solid rgba(0, 0, 0, 0.12);
+  outline-offset: -1.5px;
+  box-shadow: var(--frame-shadow);
+  background: var(--placeholder-bg);
+}
+
+.anime-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.anime-hero-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* flex-basis: auto (not a fixed number) so the plain `width` below is
+     what actually governs sizing — js/anime-page.js overrides that width
+     with the video slot's own computed width once it knows it, so this
+     column always shrinks to exactly match the video's real size instead
+     of leaving unused space to the video's right when it comes out
+     narrower than this default. 640px is just the pre-JS/no-JS fallback. */
+  flex: 0 1 auto;
+  width: 640px;
+}
+
+.anime-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1.1rem;
+  /* Reserves room for 2 lines (this font stack's normal line-height
+     measures ~1.5x its font-size, so 2 lines is ~3em) even when the
+     title only needs 1, e.g. Frieren's — so js/anime-page.js's
+     fitVideoSlot() always has the same amount of leftover height to
+     work with regardless of how many lines a given title wraps to.
+     That's what lets the video consistently reach the cover's bottom
+     edge instead of stopping short for short titles, without needing to
+     widen the video past its normal size. */
+  min-height: 3em;
+}
+
+/* True 16:9 box (not a flex-filled area of whatever height was left over
+   after the title) so a real preview clip — expected to be a 16:9
+   video — renders at its actual proportions with nothing cropped off,
+   instead of getting stretched/cropped to match a height that changed
+   with how many lines the title happened to wrap to. */
+/* Default/fallback box (100% of the column, 16:9) for the instant before
+   JS runs and for the stacked mobile layout. js/anime-page.js overrides
+   width/height with explicit px on wider screens — a plain CSS
+   max-height alongside width:auto turned out not to reliably grow the
+   box back up to fill the available space (an empty aspect-ratio box
+   with no intrinsic content sized itself far smaller instead), so the
+   actual "fit within the cover's height, else fill the column" math is
+   done in JS instead, in real pixels. */
+.anime-video-slot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--placeholder-bg);
+}
+
+.anime-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Shown instead of the <video> until a real clip is added in
+   js/animes.js (or if that clip 404s) — see js/anime-page.js. */
+.anime-video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Centered and a good deal bigger than the small tracked ".detail-
+   section-label" kicker character.html's "About" uses — a dedicated class
+   rather than reusing that one, so this change doesn't also resize
+   "About" on the character page. */
+/* Bottom-to-top reveal — only this heading, not the summary paragraph
+   below it. Triggered by an IntersectionObserver in js/anime-page.js the
+   first time it actually scrolls into view (not on page load itself,
+   which was firing the animation while it was still off-screen below the
+   fold — by the time you scrolled down to it, it had already finished,
+   which read as "it comes in too quick"/not really visible at all). A
+   longer duration and a slight start delay make the motion itself easier
+   to catch too. */
+.anime-summary-heading {
+  text-align: center;
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+  font-weight: 700;
+  color: var(--accent);
+  /* Same bottom margin as .anime-hero-panel's own margin-bottom, so the
+     heading sits the same distance above the summary panel below it as
+     the hero panel sits above the heading itself. */
+  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  opacity: 0;
+  transform: translateY(36px);
+  /* Was 1s, then 1.8s — slower again (2s) per request. */
+  transition: opacity 2s ease 0.1s, transform 2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
+}
+
+.anime-summary-heading.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Bottom corners square (not rounded) — this is the last panel on the
+   page (see .anime-detail's own padding-bottom: 0 below), so it runs
+   flush to the true end of the page instead of leaving a strip of the
+   sparkle background showing beneath it, the same reasoning
+   .game-section's own bottom corners use on the home page. */
+.anime-summary-panel {
+  width: calc(100vw + 2px);
+  margin-left: calc(-50vw + 50% - 1px);
+  background: var(--bg);
+  border-radius: 1.5rem 1.5rem 0 0;
+  box-shadow: var(--frame-shadow);
+  padding: clamp(1.5rem, 4vw, 3rem) 5vw;
+}
+
+.anime-summary-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Centered as a block (not just centered text inside a left-hugging
+   column) and black rather than .detail-bio's softer near-black, per
+   request. Starts hidden/offset and animates up into place via
+   .revealed (added by an IntersectionObserver in js/anime-page.js) the
+   first time it scrolls into view. */
+/* margin: 0 auto centers the paragraph as a block in the middle of the
+   panel; text-align stays left (normal reading flow) rather than
+   centering each individual line within that block. */
+.anime-summary {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #000;
+  max-width: 40em;
+  margin: 0 auto;
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .anime-hero-inner {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .anime-hero-panel {
+    padding: clamp(1.25rem, 6vw, 2rem) 5vw;
+  }
+
+  .anime-cover {
+    flex: 0 0 auto;
+    width: clamp(160px, 50vw, 220px);
+    margin: 0 auto;
+  }
+
+  .anime-hero-body {
+    /* flex-basis: 640px (the base rule) would apply to HEIGHT once the
+       container switches to a column direction here — flex-basis always
+       targets the main axis, not literally "width." Reset to auto so it
+       just sizes to content/100% width instead. */
+    flex: 1 1 auto;
+    width: 100%;
+    text-align: center;
+    padding-top: 1rem;
+  }
+}
+
+/* ===== Anime Browse Drawer (anime.html) ===== */
+/* A bottom sheet that keeps a round handle peeking above the fold at all
+   times — position: fixed, so it stays put through scroll instead of
+   scrolling away with the page — and slides the rest of itself up when
+   opened. Lets you flip between anime from anywhere on the page without a
+   top selector row eating space above the hero panel. */
+.anime-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Closed: only the round handle's own height stays on screen, the panel
+     underneath it pushed just out of view. */
+  transform: translateY(calc(100% - 3.25rem));
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.anime-drawer.open {
+  transform: translateY(0);
+}
+
+.anime-drawer-handle {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg);
+  box-shadow: var(--frame-shadow);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.anime-drawer-handle svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.35s ease;
+}
+
+/* Same up-chevron, just flipped — reads as "drag down to close" once the
+   sheet is open instead of needing a second icon. */
+.anime-drawer.open .anime-drawer-handle svg {
+  transform: rotate(180deg);
+}
+
+/* Fixed height (not content-sized) so opening the drawer always takes up
+   the same modest slice of the viewport regardless of title lengths. Tall
+   enough for .drawer-item-frame's fixed height + a 2-line title + padding
+   with room to spare — it was clipping both the top of the frames and the
+   bottom of the titles before those were sized against it explicitly. */
+.anime-drawer-panel {
+  width: 100%;
+  max-width: 1100px;
+  background: var(--bg);
+  border-radius: 1.5rem 1.5rem 0 0;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12);
+  padding: 1rem clamp(0.75rem, 3vw, 1.5rem) 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 16rem;
+  box-sizing: border-box;
+}
+
+.drawer-nav {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--placeholder-bg);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fills the full panel width (not capped/centered to a narrower strip)
+   so the 3 cards spread out across the whole length instead of bunching
+   into the middle with dead space on either side. */
+.anime-drawer-viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+/* Holds every anime (several looping cycles either side of the real 5 —
+   see js/anime-page.js) and actually slides via transform on prev/next
+   and on drag, the same technique as the Favourite carousel on Home,
+   instead of re-rendering just 3 items with a cross-fade. */
+.anime-drawer-track {
+  /* Without an explicit width, this flex container has no definite size of
+     its own for children's percentage-based flex-basis (below) to resolve
+     against — it and its children end up in a sizing loop that Chromium
+     resolves by blowing each "1/3 of the container" card up to nearly
+     2000px wide instead, which .anime-drawer-viewport's overflow: hidden
+     then just crops down to what looked like a normal card. */
+  width: 100%;
+  display: flex;
+  gap: clamp(1rem, 3vw, 2rem);
+  transition: transform 0.4s ease;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.anime-drawer-track.track-dragging {
+  cursor: grabbing;
+}
+
+/* Blocks the browser's native "ghost image/link" drag (Chromium honors
+   this CSS; Firefox doesn't, hence draggable="false" set directly on both
+   elements in js/anime-page.js as the actual cross-browser fix) —
+   otherwise it fights the custom pointer-drag below. */
+.anime-drawer-track img,
+.drawer-item {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Stops the frame hover-zoom (its own 0.25s transition) from firing as
+   the pointer crosses cards mid-drag. */
+.anime-drawer-track.track-dragging .drawer-item-frame {
+  pointer-events: none;
+}
+
+.drawer-item {
+  flex: 0 0 calc((100% - 2 * clamp(1rem, 3vw, 2rem)) / 3);
+  min-width: 0;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  text-align: center;
+}
+
+/* Proper 16:9 (matching the source thumbnails and .preview-card on Home)
+   instead of a fixed height fighting the flexible column width — that
+   fixed height had the same WIDTH as before but a shorter, squashed
+   height, which is what was cropping the images oddly instead of just
+   scaling them down. Getting smaller now comes from
+   .anime-drawer-viewport being narrower (above), which this aspect-ratio
+   scales height to match automatically. */
+.drawer-item-frame {
+  aspect-ratio: 16 / 9;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  outline: 1.5px solid rgba(0, 0, 0, 0.18);
+  outline-offset: -1.5px;
+  background: var(--placeholder-bg);
+  transition: transform 0.25s ease;
+}
+
+.drawer-item-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Contracts (not expands) on hover — scaling up pushed the frame's edges
+   into its neighbors/the viewport's clipped edge, which is what looked
+   like the card getting blocked/cut off by invisible edges. */
+.drawer-item:hover .drawer-item-frame {
+  transform: scale(0.95);
+}
+
+.drawer-item.active .drawer-item-frame {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.drawer-item-title {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (max-width: 700px) {
+  .anime-drawer-panel {
+    height: 12.5rem;
+    gap: 0.4rem;
+  }
+
+  .drawer-item-title {
+    font-size: 0.75rem;
+  }
 }
 
 /* ===== Back to Top ===== */
@@ -1013,6 +2059,11 @@ h2 {
   .topbar-right {
     justify-self: center;
   }
+
+  .section-panel {
+    width: 100%;
+    border-radius: 0;
+  }
 }
 
 @media (max-width: 600px) {
@@ -1030,6 +2081,7 @@ h2 {
   }
 
   .preview-footer {
+    flex-direction: column;
     align-items: stretch;
   }
 

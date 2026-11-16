@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>異世界コレクション</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body>
 
@@ -114,7 +114,7 @@
 
   <!-- Favorites Carousel -->
   <section class="favorites" aria-label="Featured Favorites">
-    <h2 class="section-label">Favorite</h2>
+    <h2 class="section-label">Favourite</h2>
 
     <div class="carousel">
       <div class="carousel-frame">
@@ -152,39 +152,60 @@
     </div>
   </section>
 
+  <!-- Video Banner -->
+  <!-- Scroll-pinned: this section is taller than the video panel itself, so
+       the panel (position: sticky) stays glued to the top of the screen
+       while you scroll through the extra height, then releases into Anime
+       once the section ends. -->
+  <section class="video-banner" aria-label="Featured Video">
+    <div class="video-banner__sticky">
+      <video class="video-banner__media" autoplay muted loop playsinline poster="assets/videos/home/featured-poster.jpg">
+        <source src="assets/videos/home/featured.mp4" type="video/mp4">
+      </video>
+    </div>
+  </section>
+
+  <!-- Anime / Character / Music / Game are wrapped together so their
+       combined height (not just Anime's alone) is what the video banner's
+       bottom overlap can safely draw on — see .preview-sections-wrap in
+       style.css. -->
+  <div class="preview-sections-wrap">
+
   <!-- Anime Preview -->
   <section class="preview-section anime-section" aria-label="Anime Preview">
     <div class="section-header">
       <h2>Anime</h2>
     </div>
+   <div class="section-flush side-right">
+    <div class="section-panel">
 
     <div class="preview-window">
       <div class="preview-track" id="animeTrack">
-        <div class="preview-item">
+        <a class="preview-item" href="anime.html?id=rezero">
           <div class="preview-card"><div class="card-placeholder"><img
             src="assets/images/home/anime/リゼロ.jpg" alt="Re:ZERO -Starting Life in Another World"></div></div>
           <p class="preview-title">Re:ZERO -Starting Life in Another World</p>
-        </div>
-        <div class="preview-item">
+        </a>
+        <a class="preview-item" href="anime.html?id=konosuba">
           <div class="preview-card"><div class="card-placeholder"><img
             src="assets/images/home/anime/このすば.jpg" alt="KONOSUBA -God's Blessing on This Wonderful World!"></div></div>
           <p class="preview-title">KONOSUBA -God's Blessing on This Wonderful World!</p>
-        </div>
-        <div class="preview-item">
+        </a>
+        <a class="preview-item" href="anime.html?id=tensura">
           <div class="preview-card"><div class="card-placeholder"><img
             src="assets/images/home/anime/転生スライム.jpg" alt="That Time I Got Reincarnated as a Slime"></div></div>
           <p class="preview-title">That Time I Got Reincarnated as a Slime</p>
-        </div>
-        <div class="preview-item">
+        </a>
+        <a class="preview-item" href="anime.html?id=danmachi">
           <div class="preview-card"><div class="card-placeholder"><img
             src="assets/images/home/anime/ダンまち.jpg" alt="Is It Wrong to Try to Pick Up Girls in a Dungeon?"></div></div>
           <p class="preview-title">Is It Wrong to Try to Pick Up Girls in a Dungeon?</p>
-        </div>
-        <div class="preview-item">
+        </a>
+        <a class="preview-item" href="anime.html?id=frieren">
           <div class="preview-card"><div class="card-placeholder"><img
             src="assets/images/home/anime/葬送のフリーレン.jpg" alt="Frieren: Beyond Journey's End"></div></div>
           <p class="preview-title">Frieren: Beyond Journey's End</p>
-        </div>
+        </a>
       </div>
     </div>
 
@@ -202,6 +223,8 @@
         </svg>
       </a>
     </div>
+    </div>
+   </div>
   </section>
 
   <!-- Character Preview -->
@@ -209,34 +232,36 @@
     <div class="section-header">
       <h2>Character</h2>
     </div>
+   <div class="section-flush side-left">
+    <div class="section-panel">
 
     <div class="character-window">
       <div class="character-track" id="charTrack">
-        <div class="char-item">
+        <a class="char-item" href="character.html?id=emilia">
           <div class="char-frame"><div class="char-placeholder"><img
             src="assets/images/home/char/エミリア.jpg" alt="Emilia"></div></div>
           <p class="char-name">Emilia</p>
-        </div>
-        <div class="char-item">
+        </a>
+        <a class="char-item" href="character.html?id=zero-two">
           <div class="char-frame"><div class="char-placeholder"><img
             src="assets/images/home/char/ゼロツー.jpg" alt="Zero Two"></div></div>
           <p class="char-name">Zero Two</p>
-        </div>
-        <div class="char-item">
+        </a>
+        <a class="char-item" href="character.html?id=rimuru">
           <div class="char-frame"><div class="char-placeholder"><img
-            src="assets/images/home/char/アクア.jpg" alt="Aqua"></div></div>
-          <p class="char-name">Aqua</p>
-        </div>
-        <div class="char-item">
+            src="assets/images/home/char/リムル.jpg" alt="Rimuru"></div></div>
+          <p class="char-name">Rimuru</p>
+        </a>
+        <a class="char-item" href="character.html?id=ram">
           <div class="char-frame"><div class="char-placeholder"><img
             src="assets/images/home/char/ラム.jpg" alt="Ram"></div></div>
           <p class="char-name">Ram</p>
-        </div>
-        <div class="char-item">
+        </a>
+        <a class="char-item" href="character.html?id=frieren">
           <div class="char-frame"><div class="char-placeholder"><img
             src="assets/images/home/char/フリーレン.jpg" alt="Frieren"></div></div>
           <p class="char-name">Frieren</p>
-        </div>
+        </a>
       </div>
     </div>
 
@@ -250,6 +275,8 @@
         </svg>
       </a>
     </div>
+    </div>
+   </div>
   </section>
 
   <!-- Music Preview -->
@@ -257,6 +284,8 @@
     <div class="section-header">
       <h2>Music</h2>
     </div>
+   <div class="section-flush side-right">
+    <div class="section-panel">
 
     <div class="music-window">
       <div class="music-track" id="musicTrack">
@@ -305,6 +334,8 @@
         </svg>
       </a>
     </div>
+    </div>
+   </div>
   </section>
 
   <!-- Game Preview -->
@@ -312,6 +343,8 @@
     <div class="section-header">
       <h2>Game</h2>
     </div>
+   <div class="section-flush side-left">
+    <div class="section-panel">
 
     <div class="preview-window">
       <div class="preview-track" id="gameTrack">
@@ -357,7 +390,11 @@
         </svg>
       </a>
     </div>
+    </div>
+   </div>
   </section>
+
+  </div>
 
 </main>
 
@@ -367,6 +404,6 @@
   </span>
 </button>
 
-<script src="js/main.js"></script>
+<script src="js/main.js?v=9"></script>
 </body>
 </html>

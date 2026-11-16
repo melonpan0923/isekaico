@@ -357,12 +357,17 @@
       // reading as a separate panel. binStart lets the left/right zones
       // pull sequential bars from that spread, so together they read as one
       // continuous spectrum with a gap punched out, not two mirrored halves.
-      function drawZone(xStart, zoneWidth, barCount, binStart) {
+      // maxRatio caps how tall a bar can grow, as a fraction of h — the
+      // left/right zones pass 0.92 (effectively uncapped), the middle zone
+      // passes 0.1 so it's reactive to the same music but can never grow
+      // past 10% height.
+      function drawZone(xStart, zoneWidth, barCount, binStart, maxRatio) {
         const bw = (zoneWidth - gap * (barCount - 1)) / barCount;
         if (bw <= 0) return;
+        const maxH = h * maxRatio;
         for (let i = 0; i < barCount; i++) {
           const value = dataArray[binForBar(binStart + i)] || 0;
-          const barH = Math.max(2, (value / 255) * h * 0.92);
+          const barH = Math.min(maxH, Math.max(2, (value / 255) * h * 0.92));
           const x = xStart + i * (bw + gap);
           const grad = ctx.createLinearGradient(0, h, 0, h - barH);
           const peakAlpha = 0.45 + (value / 255) * 0.55;
@@ -373,8 +378,18 @@
         }
       }
 
-      drawZone(0, leftWidth, leftBars, 0);
-      drawZone(gapRight, rightWidth, rightBars, leftBars);
+      drawZone(0, leftWidth, leftBars, 0, 0.92);
+      drawZone(gapRight, rightWidth, rightBars, leftBars, 0.92);
+
+      // Middle zone (the gap behind the controls) — fills the whole width
+      // between the left/right zones, reacts to the same music data, but
+      // capped at 10% height so it never grows past a subtle strip.
+      const middleWidth = gapRight - gapLeft;
+      if (middleWidth > 0) {
+        const pitch = totalWidth / totalBars;
+        const middleBars = Math.max(1, Math.round(middleWidth / pitch));
+        drawZone(gapLeft, middleWidth, middleBars, 0, 0.1);
+      }
     }
     draw();
   }
@@ -614,6 +629,144 @@ function initScrubber({ barEl, thumbEl, trackEl, visible }) {
   window.addEventListener("resize", () => {
     layoutThumb();
     moveTrack();
+  });
+
+  // ----- Drag the cards themselves (not just the scrub bar) -----
+  // Follows the pointer 1:1 while dragging (transition off), then hands
+  // off to setIndex on release, which snaps to the nearest card and
+  // re-enables the transition for that final settle.
+  function stepPx() {
+    const gap = parseFloat(getComputedStyle(trackEl).gap) || 0;
+    return trackEl.children[0].offsetWidth + gap;
+  }
+
+  let pointerActive = false;
+  let dragStarted = false;
+  let activePointerId = null;
+  let dragStartX = 0;
+  let dragStartOffset = 0;
+  // Pointermove can fire many times per animation frame; writing the
+  // transform straight from every event was the main source of the
+  // choppiness — batching to one write per frame (rAF) is what actually
+  // smooths it out.
+  let latestDelta = 0;
+  let dragRAF = null;
+
+  function applyDragFrame() {
+    trackEl.style.transform = `translateX(-${dragStartOffset - latestDelta}px)`;
+    dragRAF = null;
+  }
+
+  // Past this many px of pointer travel from pointerdown, the gesture reads
+  // as "dragging the carousel" rather than "clicking a card" — matters now
+  // that some tracks (Anime) hold real <a> links. Everything drag-specific
+  // (pointer capture included) is deferred until this threshold is crossed
+  // instead of happening unconditionally on pointerdown: setPointerCapture
+  // also redirects the *click* that follows pointerup away from whatever
+  // card is under the cursor, which was harmless while these cards were
+  // plain divs but would otherwise swallow every plain click/tap on a card
+  // link before it ever gets called.
+  const DRAG_THRESHOLD_PX = 6;
+
+  function beginDrag() {
+    dragStarted = true;
+    dragStartOffset = current * stepPx();
+    trackEl.style.transition = "none";
+    trackEl.style.cursor = "grabbing";
+    // Stops the card hover tilt (scale/rotate, its own 0.3s transition)
+    // from firing as the pointer crosses cards mid-drag — that fight
+    // between two animations was the other big contributor to the jitter.
+    trackEl.classList.add("track-dragging");
+    trackEl.setPointerCapture(activePointerId);
+    // Cards outside the current window are normally visibility:hidden (see
+    // updateVisibility below) so they don't peek past the clip boundary at
+    // rest. Reveal everything for the duration of the drag so whichever
+    // neighbor you're dragging toward is actually visible sliding in,
+    // instead of popping in only once the index officially changes.
+    if (hideTimer) clearTimeout(hideTimer);
+    Array.from(trackEl.children).forEach((child) => {
+      child.style.visibility = "";
+    });
+  }
+
+  trackEl.addEventListener("pointerdown", (e) => {
+    pointerActive = true;
+    dragStarted = false;
+    activePointerId = e.pointerId;
+    dragStartX = e.clientX;
+    latestDelta = 0;
+  });
+
+  trackEl.addEventListener("pointermove", (e) => {
+    if (!pointerActive) return;
+    latestDelta = e.clientX - dragStartX;
+    if (!dragStarted) {
+      if (Math.abs(latestDelta) < DRAG_THRESHOLD_PX) return;
+      beginDrag();
+    }
+    if (dragRAF === null) dragRAF = requestAnimationFrame(applyDragFrame);
+  });
+
+  function endCardDrag(e) {
+    if (!pointerActive) return;
+    pointerActive = false;
+    if (dragRAF !== null) {
+      cancelAnimationFrame(dragRAF);
+      dragRAF = null;
+    }
+    // Never crossed the drag threshold: this was a plain click/tap, and
+    // pointer capture was never engaged, so the resulting click event is
+    // free to reach whatever card is under the cursor and navigate as
+    // normal — nothing to unwind here.
+    if (!dragStarted) return;
+    dragStarted = false;
+    trackEl.style.transition = "";
+    trackEl.style.cursor = "grab";
+    trackEl.classList.remove("track-dragging");
+    const delta = e.clientX - dragStartX;
+    const target = current - delta / stepPx();
+    const before = current;
+    setIndex(target);
+    // setIndex no-ops when the dragged distance isn't enough to change the
+    // index, which would otherwise leave the track sitting at the mid-drag
+    // offset (and every card still revealed) instead of snapping back to
+    // its current card and re-hiding whatever's outside the window again.
+    if (current === before) {
+      moveTrack();
+      updateVisibility();
+    }
+  }
+
+  trackEl.addEventListener("pointerup", endCardDrag);
+  trackEl.addEventListener("pointercancel", endCardDrag);
+
+  // ----- Arrow key navigation (while hovering this row or its scrub bar) -----
+  let hovering = false;
+  let barHovering = false;
+  trackEl.addEventListener("mouseenter", () => {
+    hovering = true;
+  });
+  trackEl.addEventListener("mouseleave", () => {
+    hovering = false;
+  });
+  barEl.addEventListener("mouseenter", () => {
+    barHovering = true;
+  });
+  barEl.addEventListener("mouseleave", () => {
+    barHovering = false;
+  });
+  window.addEventListener("keydown", (e) => {
+    // Also allow arrow keys mid-drag even if the pointer (under capture)
+    // has moved outside the bar/thumb bounds, so a drag started on the
+    // slider doesn't get silently cut off by a stray mouseleave.
+    if (!hovering && !barHovering && !dragging && !cardDragging) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setIndex(current - 1);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setIndex(current + 1);
+    }
   });
 
   setIndex(0);
@@ -906,6 +1059,89 @@ initScrubber({
       amps.fill(0);
       target.fill(0);
     });
+  });
+})();
+
+// ===== Section heading letter-reveal on scroll =====
+// Splits each section's title (Favorite, Anime, Character, Music, Game) into
+// per-letter spans (once, on load) and fades them in left-to-right when the
+// title scrolls into view — a reveal, not a slide, so each letter appears in
+// place rather than moving into position.
+//
+// Reveal fires only on downward entry (a title scrolling up into view from
+// below shows nothing new happening — no re-trigger, no hide). Reset only
+// fires on upward exit (a title leaving the viewport because you scrolled
+// down past it stays revealed, since you just saw it) — so a title only
+// resets once you've scrolled back up past it, ready to replay the next time
+// you scroll back down to it. This also makes Favorite behave correctly
+// without any special-casing: it can only ever exit by being scrolled down
+// past (never by an upward exit, since there's nothing above it to scroll up
+// into first), so it reveals once on load and simply stays revealed.
+(function () {
+  const targets = [];
+  document.querySelectorAll(".section-header").forEach((header) => {
+    const h2 = header.querySelector("h2");
+    if (h2) targets.push({ container: header, heading: h2 });
+  });
+  document.querySelectorAll(".section-label").forEach((label) => {
+    targets.push({ container: label, heading: label });
+  });
+  if (!targets.length) return;
+
+  targets.forEach(({ heading }) => {
+    const text = heading.textContent;
+    heading.textContent = "";
+    text.split("").forEach((char, i) => {
+      const span = document.createElement("span");
+      span.className = "letter";
+      span.textContent = char === " " ? " " : char;
+      span.style.transitionDelay = `${i * 40}ms`;
+      heading.appendChild(span);
+    });
+  });
+
+  let lastScrollY = window.scrollY;
+  let scrollingDown = true;
+  window.addEventListener("scroll", () => {
+    const currentY = window.scrollY;
+    scrollingDown = currentY >= lastScrollY;
+    lastScrollY = currentY;
+  });
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          if (scrollingDown) entry.target.classList.add("revealed");
+        } else if (!scrollingDown) {
+          entry.target.classList.remove("revealed");
+        }
+      });
+    },
+    { threshold: 0.3 },
+  );
+
+  // "Favourite" is the page's very first title, so it should always show up
+  // the moment the page finishes loading — even if the browser restores an
+  // earlier scroll position that leaves it off-screen on reload. It can
+  // never be scrolled *down* into (nothing sits above it), so the observer
+  // would otherwise never reveal it in that case; just reveal it
+  // unconditionally instead of depending on where the page happens to load
+  // scrolled to.
+  document.querySelectorAll(".section-label").forEach((label) => {
+    label.classList.add("revealed");
+  });
+
+  // The other section titles (Anime/Character/Music/Game) still reveal
+  // immediately only if already on screen at load time — content already
+  // visible there has nothing left to scroll past, so it would never get
+  // an IntersectionObserver callback reporting a fresh entry otherwise.
+  targets.forEach(({ container }) => {
+    const rect = container.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      container.classList.add("revealed");
+    }
+    observer.observe(container);
   });
 })();
 
